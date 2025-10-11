@@ -99,7 +99,7 @@ class Player {
         this.velocityX = 0; this.velocityY = 0;
         this.acceleration = 0.3; this.friction = 0.97;
         this.health = 100; this.maxHealth = 100;
-        this.shootCooldown = 12; this.shootTimer = 0;
+        this.shootCooldown = 20; this.shootTimer = 0;
         this.abilities = [];
         this.skills = [];
         this.skillCooldowns = { nova: 300, blink: 400, barrier: 600, overdrive: 1200 };
@@ -227,28 +227,28 @@ class Tower {
 class Sentry {
     constructor(x, y) { this.x = x; this.y = y; this.radius = 12; this.color = '#00FFFF'; this.originalCooldown = 40; this.shootCooldown = 40; this.shootTimer = 0; this.range = 250; }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill(); }
-    update() { this.draw(); if (this.shootTimer > 0) this.shootTimer--; this.shootCooldown = player.activeEffects['overdrive'] ? this.originalCooldown / 2 : this.originalCooldown; let closestEnemy = null, minDistance = this.range; enemies.forEach(enemy => { if(enemy instanceof LaserEnemy && enemy.state !== 'moving') return; const dist = Math.hypot(this.x - enemy.x, this.y - enemy.y); if (dist < minDistance) { minDistance = dist; closestEnemy = enemy; } }); if (closestEnemy && this.shootTimer <= 0) { const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x); const velocity = { x: Math.cos(angle) * 5, y: Math.sin(angle) * 5 }; projectiles.push(new Projectile(this.x, this.y, 4, this.color, velocity, 5)); this.shootTimer = this.shootCooldown; } }
+    update() { this.draw(); if (this.shootTimer > 0) this.shootTimer--; this.shootCooldown = player.activeEffects['overdrive'] ? this.originalCooldown / 2 : this.originalCooldown; let closestEnemy = null, minDistance = this.range; enemies.forEach(enemy => { if(enemy instanceof LaserEnemy && enemy.state !== 'moving') return; const dist = Math.hypot(this.x - enemy.x, this.y - enemy.y); if (dist < minDistance) { minDistance = dist; closestEnemy = enemy; } }); if (closestEnemy && this.shootTimer <= 0) { const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x); const velocity = { x: Math.cos(angle) * 3, y: Math.sin(angle) * 3 }; projectiles.push(new Projectile(this.x, this.y, 4, this.color, velocity, 5)); this.shootTimer = this.shootCooldown; } }
 }
 
 class Enemy {
-    constructor(x, y, radius, color, speed, health, xpValue) { this.x = x; this.y = y; this.radius = radius; this.color = color; this.originalSpeed = speed; this.speed = speed; this.health = health; this.maxHealth = health; this.xpValue = xpValue; this.target = null; this.attackCooldown = 60; this.attackTimer = 0; }
+    constructor(x, y, radius, color, speed, health, xpValue, damage = 10) { this.x = x; this.y = y; this.radius = radius; this.color = color; this.originalSpeed = speed; this.speed = speed; this.health = health; this.maxHealth = health; this.xpValue = xpValue; this.target = null; this.attackCooldown = 60; this.attackTimer = 0; this.damage = damage; }
     draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.fill(); }
     update() { if (this.attackTimer > 0) this.attackTimer--; const distPlayer = Math.hypot(player.x - this.x, player.y - this.y); const distTower = Math.hypot(tower.x - this.x, tower.y - this.y); this.target = (distPlayer < distTower && player.state === 'ALIVE') ? player : tower; const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); this.x += Math.cos(angle) * this.speed; this.y += Math.sin(angle) * this.speed; this.draw(); }
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 45, 10); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
+    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 67, 10, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 4; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } }
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 60, 20); }
+    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 90, 20, 15); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
 }
 
 class ChristmasTreeEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 60, 30); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
+    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 135, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     teleport() { if (!this.target) return; const behindDist = 80; const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x); this.x = this.target.x + Math.cos(angleToTarget) * behindDist; this.y = this.target.y + Math.sin(angleToTarget) * behindDist; }
     update() {
@@ -261,19 +261,19 @@ class ChristmasTreeEnemy extends Enemy {
         } else {
             super.update();
             this.teleportTimer++;
-            if (!this.hasTeleported && this.teleportTimer >= this.initialCooldown) { this.teleportState = 'fadingOut'; this.hasTeleported = true; this.teleportTimer = 0; } else if (this.hasTeleported && this.teleportTimer >= 240) { this.teleportState = 'fadingOut'; this.teleportTimer = 0; }
+            if (!this.hasTeleported && this.teleportTimer >= this.initialCooldown) { this.teleportState = 'fadingOut'; this.hasTeleported = true; this.teleportTimer = 0; } 
         }
         this.draw();
     }
 }
 
 class TinyTriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 8, 1); }
+    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 12, 1, 15); }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
 }
 
 class HealerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 75, 25); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
+    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 112, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
     draw() { 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -290,13 +290,13 @@ class HealerEnemy extends Enemy {
 }
 
 class SummonerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 120, 40); this.summonCooldown = 180; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 180, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.radius, -Math.sin((18 + i * 72) * Math.PI / 180) * this.radius); } ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.summonTimer++; if (this.summonTimer >= this.summonCooldown) { enemies.push(new TinyTriangleEnemy(this.x, this.y)); enemies.push(new TinyTriangleEnemy(this.x, this.y)); this.summonTimer = 0; } }
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 120, 50); this.state = 'moving'; this.aimDuration = 75; this.fireDuration = 20; this.aimTimer = 0; this.laserTarget = {}; }
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 180, 50, 15); this.state = 'moving'; this.aimDuration = 30; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -304,16 +304,23 @@ class LaserEnemy extends Enemy {
         else if (this.state === 'aiming') {
             this.draw(); this.aimTimer--;
             ctx.save(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([15, 5]); ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.laserTarget.x, this.laserTarget.y); ctx.stroke(); ctx.restore();
-            if (this.aimTimer <= 0) { this.state = 'firing'; this.aimTimer = this.fireDuration; const angle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x); for (let i = 0; i < 30; i++) { const vel = { x: Math.cos(angle) * 20, y: Math.sin(angle) * 20 }; projectiles.push(new Projectile(this.x + vel.x / 20 * i * 2, this.y + vel.y / 20 * i * 2, 5, 'red', vel, 2, 100)); } }
-        } else if (this.state === 'firing') {
-            this.draw(); this.aimTimer--;
-            if (this.aimTimer <= 0) { this.state = 'moving'; this.attackTimer = this.attackCooldown * 3; }
+            if (this.aimTimer === this.aimDuration - 1) { // Fire on the first frame of aiming
+                const angle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
+                for (let i = 0; i < 30; i++) {
+                    const vel = { x: Math.cos(angle) * 20, y: Math.sin(angle) * 20 };
+                    projectiles.push(new Projectile(this.x + vel.x / 20 * i * 2, this.y + vel.y / 20 * i * 2, 5, 'red', vel, 2, 100));
+                }
+            }
+            if (this.aimTimer <= 0) { // Transition to moving after aiming is done
+                this.state = 'moving';
+                this.attackTimer = this.attackCooldown * 3; // Reset attack timer
+            }
         }
     }
 }
 
 class HexagonEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 150, 60); this.summonCooldown = 240; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 225, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; }
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -366,7 +373,9 @@ function resetGame() {
     gameState = 'LOBBY';
     player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3);
     tower = new Tower(canvas.width / 2, canvas.height / 2, 87, '#FF4500');
-    tower.health = 750; tower.maxHealth = 750;
+    tower.health = 500; tower.maxHealth = 500;
+    // ... (inside upgradeTowerHpBtn event listener)
+    tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth);
     sentryCost = 250;
     towerUpgradeCost = 100;
     addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`;
@@ -487,18 +496,18 @@ function animate() {
                 const distPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y); 
                 if (distPlayer - enemy.radius - player.width / 2 < 1 && player.invincibleTimer <= 0) { 
                     if(enemy.attackTimer <= 0){
-                        player.health -= 10;
+                        player.health -= enemy.damage;
                         enemy.attackTimer = enemy.attackCooldown;
                         if(player.health <= 0) {
                             player.state = 'DEAD';
-                            player.reviveTimer = 420; // 7 seconds
+                            player.reviveTimer = 600; // 10 seconds
                             for(let k=0; k<20; k++) { particles.push(new Particle(player.x, player.y, Math.random() * 4, player.color, { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 })); }
                         }
                     }
                 }
                 if (player.activeEffects['barrier']) { const distBarrier = Math.hypot(player.x - enemy.x, player.y - enemy.y); if (distBarrier < player.width * 2.5 + enemy.radius) { enemy.health -= 0.5; } }
             }
-            const distTower = Math.hypot(tower.x - enemy.x, tower.y - enemy.y); if (distTower - enemy.radius - tower.size / 2 < 1) { if(enemy.attackTimer <= 0){ tower.health -= 10; enemy.attackTimer = enemy.attackCooldown; } }
+            const distTower = Math.hypot(tower.x - enemy.x, tower.y - enemy.y); if (distTower - enemy.radius - tower.size / 2 < 1) { if(enemy.attackTimer <= 0){ tower.health -= enemy.damage; enemy.attackTimer = enemy.attackCooldown; } }
             for (let j = projectiles.length - 1; j >= 0; j--) {
                 const projectile = projectiles[j];
                 if (!projectile || !enemy) continue;
@@ -538,9 +547,9 @@ window.addEventListener('mousedown', e => { if (e.button === 0) keys.mouse0 = tr
 window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = false; });
 window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
-upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth += 300; tower.health = Math.min(tower.health + 300, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
+upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
 addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost = Math.floor(sentryCost * 1.5); addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
-rouletteStartBtn.addEventListener('click', () => { const cost = 200; if (score >= cost) { score -= cost; shopModal.classList.add('hidden'); presentRouletteOptions(); } });
+rouletteStartBtn.addEventListener('click', () => { const cost = 350; if (score >= cost) { score -= cost; shopModal.classList.add('hidden'); presentRouletteOptions(); } });
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; tower.x = canvas.width / 2; tower.y = canvas.height / 2; if(player) { player.x = canvas.width/2 + 100; player.y = canvas.height/2; } });
 
 // --- Initial call ---
