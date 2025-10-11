@@ -54,6 +54,7 @@ let gameState, previousGameState, waveClearTimer, shopPhaseTimer, shopAnnounced;
 let player, tower;
 let animationId;
 let sentryCost, towerUpgradeCost;
+let rouletteCost = 200;
 let currentBoss = null;
 
 // --- Drawing ---
@@ -120,6 +121,8 @@ class Player {
         this.state = 'ALIVE';
         this.reviveTimer = 0;
         this.invincibleTimer = 0;
+        this.speedUpgradesCount = 0;
+        this.firerateUpgradesCount = 0;
     }
 
     draw() {
@@ -156,7 +159,7 @@ class Player {
 
     shoot() {
         if (this.shootTimer <= 0) {
-            const projectileSpeed = 6;
+            const projectileSpeed = 8;
             const baseVelocity = { x: Math.sin(this.angle) * projectileSpeed, y: -Math.cos(this.angle) * projectileSpeed };
             let pierceCount = this.abilities.includes('piercing') ? 2 : 0;
             let isExplosive = this.abilities.includes('explosive');
@@ -248,7 +251,7 @@ class Enemy {
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 44, 10, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
+    constructor(x, y, xpValue = 10) { super(x, y, 25, '#FF0000', 1.2, 44, xpValue, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 4; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } }
 }
@@ -357,7 +360,7 @@ class HexagonEnemy extends Enemy {
 
 class Boss extends Enemy {
     constructor(x, y) {
-        super(x, y, 80, '#FF00FF', 0.3, 1333, 500, 30); // Larger radius, very high health, high XP, high damage
+        super(x, y, 80, '#FF00FF', 0.3, 2000, 500, 30); // Larger radius, very high health, high XP, high damage
         this.name = "The Annihilator";
         this.attackCooldown = 180; // 3 seconds
         this.attackTimer = 0;
@@ -468,7 +471,7 @@ class Boss extends Enemy {
     }
 }
 
-const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 10, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } ];
+const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 5, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } ];
 
 function startWave() {
 
@@ -532,8 +535,8 @@ function startWave() {
 
 const upgradePool = [
     { id: 'heal', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
-    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', apply: (p) => { p.maxSpeed += 0.5; } },
-    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); } },
+    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
+    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
     { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
     { id: 'blink', name: '점멸', description: '[Q,E,R] 키로 짧은 거리를 순간이동합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
     { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
@@ -543,7 +546,20 @@ const upgradePool = [
     { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
 ];
 
-function presentRouletteOptions() { const availableUpgrades = upgradePool.filter(upg => { if (upg.type === 'skill' && player.skills.length >= 3) return false; if (upg.type === 'skill' && player.skills.includes(upg.id)) return false; if (upg.type === 'ability' && player.abilities.includes(upg.id)) return false; return true; }); const chosenUpgrades = availableUpgrades.sort(() => 0.5 - Math.random()).slice(0, 3); for (let i = 0; i < 3; i++) { const optionEl = document.getElementById(`option-${i}`); const titleEl = optionEl.querySelector('.option-title'); const descEl = optionEl.querySelector('.option-desc'); const btnEl = optionEl.querySelector('.select-option-btn'); if (chosenUpgrades[i]) { const upgrade = chosenUpgrades[i]; titleEl.textContent = upgrade.name; descEl.textContent = upgrade.description; const newBtn = btnEl.cloneNode(true); btnEl.parentNode.replaceChild(newBtn, btnEl);
+function presentRouletteOptions() { 
+    const availableUpgrades = upgradePool.filter(upg => {
+        if (upg.type === 'skill' && player.skills.length >= 3) return false;
+        if (upg.type === 'skill' && player.skills.includes(upg.id)) return false;
+        if (upg.type === 'ability' && player.abilities.includes(upg.id)) return false;
+
+        // Filter out upgrades that have reached maxStacks
+        if (upg.id === 'speed' && upg.maxStacks && player.speedUpgradesCount >= upg.maxStacks) return false;
+        if (upg.id === 'firerate' && upg.maxStacks && player.firerateUpgradesCount >= upg.maxStacks) return false;
+
+        return true;
+    });
+    console.log(`Presenting roulette options. Available upgrades count: ${availableUpgrades.length}`);
+    const chosenUpgrades = availableUpgrades.sort(() => 0.5 - Math.random()).slice(0, 3); for (let i = 0; i < 3; i++) { const optionEl = document.getElementById(`option-${i}`); const titleEl = optionEl.querySelector('.option-title'); const descEl = optionEl.querySelector('.option-desc'); const btnEl = optionEl.querySelector('.select-option-btn'); if (chosenUpgrades[i]) { const upgrade = chosenUpgrades[i]; titleEl.textContent = upgrade.name; descEl.textContent = upgrade.description; const newBtn = btnEl.cloneNode(true); btnEl.parentNode.replaceChild(newBtn, btnEl);
             newBtn.onclick = () => { upgrade.apply(player); rouletteModal.classList.add('hidden'); }; optionEl.style.display = 'flex'; } else { optionEl.style.display = 'none'; } } rouletteModal.classList.remove('hidden'); }
 
 // --- Game Flow & State Management ---
@@ -559,8 +575,10 @@ function resetGame() {
     tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth);
     sentryCost = 250;
     towerUpgradeCost = 100;
+    rouletteCost = 200; // Reset roulette cost
     addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`;
     upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`;
+    rouletteStartBtn.textContent = `능력 뽑기 (비용: ${rouletteCost})`; // Set initial button text
     loadHighScore();
     Object.values(skillSlots).forEach(slot => { slot.style.borderColor = '#fff'; slot.style.boxShadow = '0 0 8px #fff'; slot.style.opacity = 0.4; slot.innerHTML = slot.id.slice(-1).toUpperCase(); });
 }
@@ -682,7 +700,7 @@ function animate() {
             if (spawnTimer >= 100) {
                 const enemyType = enemiesToSpawn.pop(); let x, y; const radius = 20;
                 if (Math.random() < 0.5) { x = Math.random() < 0.5 ? 0 - radius : canvas.width + radius; y = Math.random() * canvas.height; } else { x = Math.random() * canvas.width; y = Math.random() < 0.5 ? 0 - radius : canvas.height + radius; }
-                if (enemyType === 'triangle') enemies.push(new TriangleEnemy(x, y));
+                if (enemyType === 'triangle') enemies.push(new TriangleEnemy(x, y, wave === 1 ? 60 : 10));
                 if (enemyType === 'square') enemies.push(new SquareEnemy(x, y));
                 if (enemyType === 'tree') enemies.push(new ChristmasTreeEnemy(x, y));
                 if (enemyType === 'healer') enemies.push(new HealerEnemy(x, y));
@@ -724,7 +742,7 @@ function animate() {
                             break;
                         }
                         if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
-                        experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', enemy.xpValue));
+                        experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + (Math.random() * 20 - 10))));
                         enemies.splice(i, 1);
                         break;
                     }
@@ -734,7 +752,7 @@ function animate() {
     } else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 600; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
     if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/3600).toString().padStart(2, '0')}:${Math.floor((gameTime/60)%60).toString().padStart(2, '0')})`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
-    playerHpEl.textContent = player.health; towerHpEl.textContent = tower.health; xpEl.textContent = score;
+    playerHpEl.textContent = player.health; towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
     enemyCountEl.textContent = enemies.length;
     const skillKeys = ['q', 'e', 'r']; const skillColors = { nova: '#FFD700', blink: '#00FFFF', barrier: '#FF00FF', overdrive: '#FFA500' };
     skillKeys.forEach((key, i) => { const skillId = player.skills[i]; if (skillId) { skillSlots[key].style.borderColor = skillColors[skillId]; skillSlots[key].style.opacity = 1 - (player.skillTimers[skillId] / player.skillCooldowns[skillId]); } else { skillSlots[key].style.borderColor = '#fff'; skillSlots[key].style.opacity = 0.4; } });
@@ -754,9 +772,18 @@ window.addEventListener('mousedown', e => { if (e.button === 0) keys.mouse0 = tr
 window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = false; });
 window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
-upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
+upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth = Math.min(1000, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
 addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost = Math.floor(sentryCost * 1.5); addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
-rouletteStartBtn.addEventListener('click', () => { const cost = 350; if (score >= cost) { score -= cost; shopModal.classList.add('hidden'); presentRouletteOptions(); } });
+rouletteStartBtn.addEventListener('click', () => {
+    console.log(`Roulette: Current score = ${score}, Cost = ${rouletteCost}`);
+    if (score >= rouletteCost) {
+        score -= rouletteCost;
+        shopModal.classList.add('hidden');
+        presentRouletteOptions();
+        rouletteCost += 50; // Increase cost after purchase
+        rouletteStartBtn.textContent = `능력 뽑기 (비용: ${rouletteCost})`; // Update button text
+    }
+});
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; tower.x = canvas.width / 2; tower.y = canvas.height / 2; if(player) { player.x = canvas.width/2 + 100; player.y = canvas.height/2; } });
 
 // --- Initial call ---
