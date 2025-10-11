@@ -22,6 +22,7 @@ const waveDisplay = document.getElementById('wave-display');
 const highScoreDisplayEl = document.getElementById('high-score-display');
 const highScoreEl = document.getElementById('high-score');
 const currentScoreEl = document.getElementById('current-score');
+const enemyCountEl = document.getElementById('enemy-count');
 
 const towerHpEl = document.getElementById('tower-hp');
 const playerHpEl = document.getElementById('player-hp');
@@ -53,6 +54,7 @@ let gameState, previousGameState, waveClearTimer, shopPhaseTimer, shopAnnounced;
 let player, tower;
 let animationId;
 let sentryCost, towerUpgradeCost;
+let currentBoss = null;
 
 // --- Drawing ---
 function drawBackgroundGrid() {
@@ -72,11 +74,20 @@ function showWaveAnnouncer(text) {
 
 // --- Utility Classes ---
 class Projectile {
-    constructor(x, y, radius, color, velocity, damage = 10, pierceCount = 0, isExplosive = false) {
-        this.x = x; this.y = y; this.radius = radius; this.color = color; this.velocity = velocity; this.damage = damage; this.pierceCount = pierceCount; this.isExplosive = isExplosive;
+    constructor(x, y, radius, color, velocity, damage = 10, pierceCount = 0, isExplosive = false, isContinuousExplosive = false) {
+        this.x = x; this.y = y; this.radius = radius; this.color = color; this.velocity = velocity; this.damage = damage; this.pierceCount = pierceCount; this.isExplosive = isExplosive; this.isContinuousExplosive = isContinuousExplosive;
     }
     draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.fill(); }
-    update() { this.draw(); this.x += this.velocity.x; this.y += this.velocity.y; }
+    update() {
+        this.draw();
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+
+        if (this.isContinuousExplosive) {
+            // Spawn small particles continuously
+            particles.push(new Particle(this.x, this.y, Math.random() * 2 + 1, 'red', { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 }));
+        }
+    }
 }
 
 class Particle {
@@ -237,18 +248,18 @@ class Enemy {
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 67, 10, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
+    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 44, 10, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 4; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } }
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 90, 20, 15); }
+    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 60, 20, 15); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
 }
 
 class ChristmasTreeEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 135, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
+    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     teleport() { if (!this.target) return; const behindDist = 80; const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x); this.x = this.target.x + Math.cos(angleToTarget) * behindDist; this.y = this.target.y + Math.sin(angleToTarget) * behindDist; }
     update() {
@@ -268,12 +279,12 @@ class ChristmasTreeEnemy extends Enemy {
 }
 
 class TinyTriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 12, 1, 15); }
+    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 8, 1, 15); }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
 }
 
 class HealerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 112, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
+    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 74, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
     draw() { 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -290,13 +301,13 @@ class HealerEnemy extends Enemy {
 }
 
 class SummonerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 180, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 120, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.radius, -Math.sin((18 + i * 72) * Math.PI / 180) * this.radius); } ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.summonTimer++; if (this.summonTimer >= this.summonCooldown) { enemies.push(new TinyTriangleEnemy(this.x, this.y)); enemies.push(new TinyTriangleEnemy(this.x, this.y)); this.summonTimer = 0; } }
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 180, 50, 15); this.state = 'moving'; this.aimDuration = 30; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; }
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 333, 50, 15); this.state = 'moving'; this.aimDuration = 30; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -304,23 +315,22 @@ class LaserEnemy extends Enemy {
         else if (this.state === 'aiming') {
             this.draw(); this.aimTimer--;
             ctx.save(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([15, 5]); ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.laserTarget.x, this.laserTarget.y); ctx.stroke(); ctx.restore();
-            if (this.aimTimer === this.aimDuration - 1) { // Fire on the first frame of aiming
+            if (this.aimTimer <= 0) { // After 0.5s delay, fire
                 const angle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
                 for (let i = 0; i < 30; i++) {
                     const vel = { x: Math.cos(angle) * 20, y: Math.sin(angle) * 20 };
-                    projectiles.push(new Projectile(this.x + vel.x / 20 * i * 2, this.y + vel.y / 20 * i * 2, 5, 'red', vel, 2, 100));
+                    projectiles.push(new Projectile(this.x + vel.x / 20 * i * 2, this.y + vel.y / 20 * i * 2, 8, 'red', vel, 5, 0, true, true));
                 }
-            }
-            if (this.aimTimer <= 0) { // Transition to moving after aiming is done
-                this.state = 'moving';
+                this.state = 'moving'; // Go back to moving after firing
                 this.attackTimer = this.attackCooldown * 3; // Reset attack timer
+                this.consecutiveShots = 0; // Ensure reset
             }
         }
     }
 }
 
 class HexagonEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 225, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 150, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; }
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -345,9 +355,180 @@ class HexagonEnemy extends Enemy {
     }
 }
 
+class Boss extends Enemy {
+    constructor(x, y) {
+        super(x, y, 80, '#FF00FF', 0.3, 1333, 500, 30); // Larger radius, very high health, high XP, high damage
+        this.name = "The Annihilator";
+        this.attackCooldown = 180; // 3 seconds
+        this.attackTimer = 0;
+        this.attackState = 'idle'; // 'idle', 'charging', 'firing'
+        this.chargeTimer = 0;
+        this.chargeDuration = 120; // 2 seconds
+        this.fireTimer = 0;
+        this.fireDuration = 60; // 1 second
+        this.laserAngle = 0;
+        this.laserTarget = { x: 0, y: 0 };
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 30;
+        // Draw a complex shape for the boss, e.g., a star or a more intricate polygon
+        ctx.beginPath();
+        const spikes = 10;
+        const outerRadius = this.radius;
+        const innerRadius = this.radius / 2;
+        for (let i = 0; i < spikes * 2; i++) {
+            let radius = (i % 2 === 0) ? outerRadius : innerRadius;
+            let angle = Math.PI / spikes * i;
+            ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Draw Gaster Blaster visual
+        if (this.attackState === 'charging' || this.attackState === 'firing') {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.laserAngle);
+
+            // Charging visual
+            if (this.attackState === 'charging') {
+                const chargeProgress = 1 - (this.chargeTimer / this.chargeDuration);
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.2 + chargeProgress * 0.6})`;
+                ctx.shadowColor = 'red';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.ellipse(this.radius + 20, 0, 10 + chargeProgress * 20, 10 + chargeProgress * 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Firing visual (laser beam)
+            if (this.attackState === 'firing') {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.shadowColor = 'red';
+                ctx.shadowBlur = 30;
+                ctx.fillRect(this.radius, -25, canvas.width, 50); // Wide laser beam
+            }
+            ctx.restore();
+        }
+    }
+
+    update() {
+        super.update(); // Basic movement towards target
+
+        if (this.attackState === 'idle') {
+            this.attackTimer++;
+            if (this.attackTimer >= this.attackCooldown) {
+                this.attackState = 'charging';
+                this.chargeTimer = this.chargeDuration;
+                this.laserTarget = { x: player.x, y: player.y }; // Aim at player
+                this.laserAngle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
+            }
+        } else if (this.attackState === 'charging') {
+            this.chargeTimer--;
+            if (this.chargeTimer <= 0) {
+                this.attackState = 'firing';
+                this.fireTimer = this.fireDuration;
+            }
+        } else if (this.attackState === 'firing') {
+            this.fireTimer--;
+            // Deal damage during firing
+            const laserWidth = 50; // Width of the laser beam
+            const laserLength = Math.hypot(canvas.width, canvas.height); // Max length of the laser
+
+            // Check collision with player
+            const distPlayerToLaserOrigin = Math.hypot(player.x - this.x, player.y - this.y);
+            const anglePlayerToLaserOrigin = Math.atan2(player.y - this.y, player.x - this.x);
+            const angleDiffPlayerLaser = Math.abs(this.laserAngle - anglePlayerToLaserOrigin);
+
+            // Simplified collision check: if player is roughly in the laser path
+            if (distPlayerToLaserOrigin < laserLength && angleDiffPlayerLaser < 0.1) { // 0.1 radians is approx 5.7 degrees
+                player.health -= 1; // Small continuous damage
+            }
+
+            // Check collision with tower
+            const distTowerToLaserOrigin = Math.hypot(tower.x - this.x, tower.y - this.y);
+            const angleTowerToLaserOrigin = Math.atan2(tower.y - this.y, tower.x - this.x);
+            const angleDiffTowerLaser = Math.abs(this.laserAngle - angleTowerToLaserOrigin);
+
+            if (distTowerToLaserOrigin < laserLength && angleDiffTowerLaser < 0.1) {
+                tower.health -= 1; // Small continuous damage
+            }
+
+            if (this.fireTimer <= 0) {
+                this.attackState = 'idle';
+                this.attackTimer = 0;
+            }
+        }
+    }
+}
+
 const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 10, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } ];
 
-function startWave() { wave++; waveEl.textContent = wave; showWaveAnnouncer(`WAVE ${wave}`); gameState = 'WAVE_IN_PROGRESS'; const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1) }; enemiesToSpawn = []; for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle'); for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square'); for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree'); for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer'); for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner'); for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser'); for (let i = 0; i < (currentWave.hexagon || 0); i++) enemiesToSpawn.push('hexagon'); enemiesToSpawn.sort(() => Math.random() - 0.5); rouletteStartBtn.disabled = false; spawnTimer = 0; shopAnnounced = false; }
+function startWave() {
+
+    wave++;
+
+    waveEl.textContent = wave;
+
+    showWaveAnnouncer(`WAVE ${wave}`);
+
+    gameState = 'WAVE_IN_PROGRESS';
+
+
+
+    if (wave % 5 === 0) { // Boss wave
+
+        currentBoss = new Boss(canvas.width / 2, -100); // Spawn boss off-screen initially
+
+        enemies.push(currentBoss);
+
+        document.getElementById('boss-name').textContent = currentBoss.name;
+
+        document.getElementById('boss-health-bar').classList.remove('hidden');
+
+        enemiesToSpawn = []; // No regular enemies on boss wave
+
+    } else { // Regular wave
+
+        currentBoss = null; // Ensure no boss from previous boss wave
+
+        document.getElementById('boss-health-bar').classList.add('hidden');
+
+        const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1) };
+
+        enemiesToSpawn = [];
+
+        for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle');
+
+        for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square');
+
+        for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree');
+
+        for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer');
+
+        for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner');
+
+        for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser');
+
+        for (let i = 0; i < (currentWave.hexagon || 0); i++) enemiesToSpawn.push('hexagon');
+
+        enemiesToSpawn.sort(() => Math.random() - 0.5);
+
+    }
+
+    rouletteStartBtn.disabled = false;
+
+    spawnTimer = 0;
+
+    shopAnnounced = false;
+
+}
 
 const upgradePool = [
     { id: 'heal', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
@@ -455,14 +636,35 @@ function animate() {
     }
 
     ctx.fillStyle = '#222'; ctx.fillRect(0, 0, canvas.width, canvas.height); drawBackgroundGrid();
-    ctx.fillStyle = 'rgba(34, 34, 34, 0.1)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     tower.draw();
     sentries.forEach(s => s.update());
     if (gameState !== 'GAME_OVER') player.update(); else player.draw();
     particles.forEach((p, i) => { if (p.alpha <= 0) particles.splice(i, 1); else p.update(); });
     projectiles.forEach((p, i) => { if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) projectiles.splice(i, 1); else p.update(); });
     experienceOrbs.forEach((orb, i) => { orb.update(); const dist = Math.hypot(player.x - orb.x, player.y - orb.y); if (dist < player.width / 2 + orb.radius + 50) { score += orb.value; experienceOrbs.splice(i, 1); } });
-    if (gameState !== 'SHOP_PHASE') enemies.forEach(e => e.update()); else enemies.forEach(e => e.draw());
+
+    // Update and draw enemies
+    if (gameState !== 'SHOP_PHASE') {
+        enemies.forEach(e => e.update());
+    } else {
+        enemies.forEach(e => e.draw());
+    }
+
+    // Update boss health bar
+    if (currentBoss) {
+        const bossHpFill = document.getElementById('boss-hp-fill');
+        bossHpFill.style.width = `${(currentBoss.health / currentBoss.maxHealth) * 100}%`;
+        if (currentBoss.health <= 0) {
+            // Boss defeated
+            currentBoss = null;
+            document.getElementById('boss-health-bar').classList.add('hidden');
+            // Clear remaining enemies if any
+            enemies = [];
+            gameState = 'WAVE_CLEAR'; // Transition to wave clear
+            waveClearTimer = 180;
+            showWaveAnnouncer('BOSS DEFEATED!');
+        }
+    }
 
     if (player.state === 'DEAD') {
         ctx.save();
@@ -513,10 +715,14 @@ function animate() {
                 if (!projectile || !enemy) continue;
                 const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
                 if (dist - enemy.radius - projectile.radius < 1) {
-                    if (projectile.isExplosive) { for (let k = 0; k < 10; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 3, 'orange', { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 })); } enemies.forEach(expEnemy => { if(expEnemy !== enemy) { const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y); if (expDist < 50) { expEnemy.health -= 5; } } }); }
+                    if (projectile.isExplosive) { for (let k = 0; k < 20; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 6, 'orange', { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 })); } enemies.forEach(expEnemy => { if(expEnemy !== enemy) { const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y); if (expDist < 75) { expEnemy.health -= 10; } } }); }
                     enemy.health -= projectile.damage;
                     if (projectile.pierceCount > 0) { projectile.pierceCount--; } else { projectiles.splice(j, 1); }
                     if (enemy.health <= 0) {
+                        if (enemy === currentBoss) { // Boss defeated, handled above
+                            enemies.splice(i, 1); // Remove boss from enemies array
+                            break;
+                        }
                         if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
                         experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', enemy.xpValue));
                         enemies.splice(i, 1);
@@ -529,6 +735,7 @@ function animate() {
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
     if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/3600).toString().padStart(2, '0')}:${Math.floor((gameTime/60)%60).toString().padStart(2, '0')})`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
     playerHpEl.textContent = player.health; towerHpEl.textContent = tower.health; xpEl.textContent = score;
+    enemyCountEl.textContent = enemies.length;
     const skillKeys = ['q', 'e', 'r']; const skillColors = { nova: '#FFD700', blink: '#00FFFF', barrier: '#FF00FF', overdrive: '#FFA500' };
     skillKeys.forEach((key, i) => { const skillId = player.skills[i]; if (skillId) { skillSlots[key].style.borderColor = skillColors[skillId]; skillSlots[key].style.opacity = 1 - (player.skillTimers[skillId] / player.skillCooldowns[skillId]); } else { skillSlots[key].style.borderColor = '#fff'; skillSlots[key].style.opacity = 0.4; } });
 }

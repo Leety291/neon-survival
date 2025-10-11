@@ -49,12 +49,20 @@
 
     <div id="wave-display"></div>
 
+    <div id="boss-health-bar" class="hidden">
+        <h3 id="boss-name"></h3>
+        <div class="health-bar-container">
+            <div class="health-bar-fill" id="boss-hp-fill"></div>
+        </div>
+    </div>
+
     <div id="ui-container" class="hidden">
         <div id="stats">
             <span>타워 체력: </span><span id="tower-hp">1000</span>
             <span> | 플레이어 체력: </span><span id="player-hp">100</span>
             <span> | 웨이브: </span><span id="wave">1</span>
             <span> | 경험치: </span><span id="xp">0</span>
+            <span> | 남은 적: </span><span id="enemy-count">0</span>
         </div>
         <div id="skill-bar">
             <div class="skill-slot" id="skill-q">Q</div>

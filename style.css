@@ -74,82 +74,6 @@ canvas {
     transition: all 0.3s ease;
 }
 
-body {
-    margin: 0;
-    background-color: #222;
-    color: #fff;
-    font-family: 'Courier New', Courier, monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-}
-
-canvas {
-    display: block;
-    background-color: #222;
-}
-
-#wave-display {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 48px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 0 0 15px #fff;
-    z-index: 5;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 1s ease-in-out;
-}
-
-#wave-display.visible {
-    opacity: 0.7;
-}
-
-#ui-container {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    z-index: 10;
-    pointer-events: none; /* UI doesn't block clicks on canvas */
-}
-
-#stats {
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #0ff;
-    text-shadow: 0 0 5px #0ff;
-}
-
-#skill-bar {
-    display: flex;
-    gap: 10px;
-}
-
-.skill-slot {
-    width: 50px;
-    height: 50px;
-    border: 2px solid #fff;
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    font-weight: bold;
-    background-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 8px #fff;
-    transition: all 0.3s ease;
-}
-
 #shop-modal, #roulette-modal, #lobby-modal, #game-over-modal, #controls-modal, #codex-modal {
     position: absolute;
     background-color: rgba(10, 20, 30, 0.9);
@@ -337,154 +261,39 @@ canvas {
     display: none !important;
 }
 
-
-#lobby-modal h1, #game-over-modal h1, #controls-modal h2, #codex-modal h2 {
-    margin: 0;
-    font-size: 48px;
-    color: #0ff;
-    text-shadow: 0 0 15px #0ff;
-}
-
-#controls-modal h2, #codex-modal h2 {
-    font-size: 36px;
-    margin-bottom: 10px;
-}
-
-#game-over-modal h1 {
-    color: #f00;
-    text-shadow: 0 0 15px #f00;
-}
-
-#start-game-btn, #restart-game-btn, #controls-btn, #codex-btn {
-    background-color: transparent;
-    border: 2px solid #fff;
-    color: #fff;
-    padding: 15px 30px;
-    font-family: inherit;
-    font-size: 24px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px #fff;
-}
-
-#controls-btn, #codex-btn {
-    font-size: 18px;
-    padding: 10px 20px;
-}
-
-#start-game-btn:hover, #restart-game-btn:hover, #controls-btn:hover, #codex-btn:hover {
-    background-color: #fff;
-    color: #000;
-    box-shadow: 0 0 20px #fff;
-}
-
-#shop-modal, #controls-modal {
-    width: 400px;
-}
-
-#roulette-modal {
-    width: 700px;
-}
-
-#codex-modal {
-    width: 800px;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-#shop-modal h2, #roulette-modal h2 {
-    margin: 0 0 10px 0;
-    color: #0ff;
-    text-shadow: 0 0 10px #0ff;
-}
-
-#shop-modal button, .select-option-btn, .close-btn {
-    background-color: transparent;
-    border: 2px solid #fff;
-    color: #fff;
-    padding: 10px;
-    font-family: inherit;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 8px #fff;
-}
-
-#shop-modal button:hover, .select-option-btn:hover, .close-btn:hover {
-    background-color: #fff;
-    color: #000;
-    box-shadow: 0 0 15px #fff;
-}
-
-#shop-modal #close-shop, .close-btn {
-    margin-top: 10px;
-    border-color: #f00;
-    box-shadow: 0 0 8px #f00;
-}
-
-#shop-modal #close-shop:hover, .close-btn:hover {
-    background-color: #f00;
-    color: #fff;
+#boss-health-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px; /* Adjust as needed */
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid #f00;
+    border-radius: 5px;
+    padding: 5px;
     box-shadow: 0 0 15px #f00;
+    z-index: 15;
+    text-align: center;
 }
 
-#shop-modal p {
-    color: #f00;
-    text-shadow: 0 0 8px #f00;
-}
-
-#controls-modal ul {
-    list-style: none;
-    padding: 0;
-    text-align: left;
-    font-size: 18px;
-}
-
-#controls-modal ul li {
-    margin-bottom: 10px;
-}
-
-#controls-modal ul b {
-    color: #0ff;
-    width: 180px;
-    display: inline-block;
-}
-
-.codex-section {
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(0, 255, 255, 0.3);
-    text-align: left;
-}
-
-.codex-section h3 {
-    color: #0ff;
-    text-shadow: 0 0 8px #0ff;
-    margin-bottom: 10px;
-}
-
-.codex-entry {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px dotted rgba(255, 255, 255, 0.1);
-}
-
-.codex-entry:last-child {
-    border-bottom: none;
-}
-
-.codex-entry h4 {
-    color: #FFD700;
+#boss-health-bar h3 {
     margin: 0 0 5px 0;
+    color: #f00;
+    text-shadow: 0 0 10px #f00;
+    font-size: 24px;
 }
 
-.codex-entry p {
-    font-size: 14px;
-    line-height: 1.4;
-    color: #ccc;
-    text-shadow: none;
+.health-bar-container {
+    width: 100%;
+    height: 20px;
+    background-color: #333;
+    border-radius: 3px;
+    overflow: hidden;
 }
 
-.hidden {
-    display: none !important;
+#boss-hp-fill {
+    height: 100%;
+    width: 100%;
+    background-color: #f00;
+    transition: width 0.1s linear;
 }
