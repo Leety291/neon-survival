@@ -95,7 +95,7 @@ class ExperienceOrb {
 class Player {
     constructor(x, y, color, speed) {
         this.x = x; this.y = y; this.color = color; this.maxSpeed = speed;
-        this.width = 30; this.height = 45; this.angle = 0;
+        this.width = 25; this.height = 37; this.angle = 0;
         this.velocityX = 0; this.velocityY = 0;
         this.acceleration = 0.3; this.friction = 0.97;
         this.health = 100; this.maxHealth = 100;
@@ -225,7 +225,7 @@ class Tower {
 }
 
 class Sentry {
-    constructor(x, y) { this.x = x; this.y = y; this.radius = 15; this.color = '#00FFFF'; this.originalCooldown = 40; this.shootCooldown = 40; this.shootTimer = 0; this.range = 250; }
+    constructor(x, y) { this.x = x; this.y = y; this.radius = 12; this.color = '#00FFFF'; this.originalCooldown = 40; this.shootCooldown = 40; this.shootTimer = 0; this.range = 250; }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill(); }
     update() { this.draw(); if (this.shootTimer > 0) this.shootTimer--; this.shootCooldown = player.activeEffects['overdrive'] ? this.originalCooldown / 2 : this.originalCooldown; let closestEnemy = null, minDistance = this.range; enemies.forEach(enemy => { if(enemy instanceof LaserEnemy && enemy.state !== 'moving') return; const dist = Math.hypot(this.x - enemy.x, this.y - enemy.y); if (dist < minDistance) { minDistance = dist; closestEnemy = enemy; } }); if (closestEnemy && this.shootTimer <= 0) { const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x); const velocity = { x: Math.cos(angle) * 5, y: Math.sin(angle) * 5 }; projectiles.push(new Projectile(this.x, this.y, 4, this.color, velocity, 5)); this.shootTimer = this.shootCooldown; } }
 }
@@ -237,18 +237,18 @@ class Enemy {
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 20, '#FF0000', 1.2, 45, 10); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
+    constructor(x, y) { super(x, y, 25, '#FF0000', 1.2, 45, 10); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 4; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } }
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#FF4500', 0.8, 90, 20); }
+    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 90, 20); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
 }
 
 class ChristmasTreeEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFF00', 1, 60, 30); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
+    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 60, 30); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     teleport() { if (!this.target) return; const behindDist = 80; const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x); this.x = this.target.x + Math.cos(angleToTarget) * behindDist; this.y = this.target.y + Math.sin(angleToTarget) * behindDist; }
     update() {
@@ -268,12 +268,12 @@ class ChristmasTreeEnemy extends Enemy {
 }
 
 class TinyTriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 8, '#FF69B4', 2.5, 8, 1); }
+    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 8, 1); }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
 }
 
 class HealerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 20, '#00FF7F', 0.7, 75, 25); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
+    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 75, 25); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
     draw() { 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -290,13 +290,13 @@ class HealerEnemy extends Enemy {
 }
 
 class SummonerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 30, '#9400D3', 0.5, 120, 40); this.summonCooldown = 180; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 120, 40); this.summonCooldown = 180; this.summonTimer = 0; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.radius, -Math.sin((18 + i * 72) * Math.PI / 180) * this.radius); } ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.summonTimer++; if (this.summonTimer >= this.summonCooldown) { enemies.push(new TinyTriangleEnemy(this.x, this.y)); enemies.push(new TinyTriangleEnemy(this.x, this.y)); this.summonTimer = 0; } }
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 18, '#FFFFFF', 1, 60, 50); this.state = 'moving'; this.aimDuration = 75; this.fireDuration = 20; this.aimTimer = 0; this.laserTarget = {}; }
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 60, 50); this.state = 'moving'; this.aimDuration = 75; this.fireDuration = 20; this.aimTimer = 0; this.laserTarget = {}; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -312,9 +312,35 @@ class LaserEnemy extends Enemy {
     }
 }
 
-const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 10, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2 } ];
+class HexagonEnemy extends Enemy {
+    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 150, 60); this.summonCooldown = 240; this.summonTimer = 0; }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI / 3) * this.radius, Math.sin(i * Math.PI / 3) * this.radius);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+    update() {
+        super.update();
+        this.summonTimer++;
+        if (this.summonTimer >= this.summonCooldown) {
+            enemies.push(new LaserEnemy(this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
+            this.summonTimer = 0;
+        }
+    }
+}
 
-function startWave() { wave++; waveEl.textContent = wave; showWaveAnnouncer(`WAVE ${wave}`); gameState = 'WAVE_IN_PROGRESS'; const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1) }; enemiesToSpawn = []; for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle'); for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square'); for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree'); for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer'); for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner'); for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser'); enemiesToSpawn.sort(() => Math.random() - 0.5); rouletteStartBtn.disabled = false; spawnTimer = 0; shopAnnounced = false; }
+const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 10, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } ];
+
+function startWave() { wave++; waveEl.textContent = wave; showWaveAnnouncer(`WAVE ${wave}`); gameState = 'WAVE_IN_PROGRESS'; const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1) }; enemiesToSpawn = []; for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle'); for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square'); for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree'); for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer'); for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner'); for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser'); for (let i = 0; i < (currentWave.hexagon || 0); i++) enemiesToSpawn.push('hexagon'); enemiesToSpawn.sort(() => Math.random() - 0.5); rouletteStartBtn.disabled = false; spawnTimer = 0; shopAnnounced = false; }
 
 const upgradePool = [
     { id: 'heal', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
@@ -339,7 +365,7 @@ function resetGame() {
     score = 0; wave = 0; gameTime = 0;
     gameState = 'LOBBY';
     player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3);
-    tower = new Tower(canvas.width / 2, canvas.height / 2, 105, '#FF4500');
+    tower = new Tower(canvas.width / 2, canvas.height / 2, 87, '#FF4500');
     tower.health = 500; tower.maxHealth = 500;
     sentryCost = 250;
     towerUpgradeCost = 100;
@@ -451,6 +477,7 @@ function animate() {
                 if (enemyType === 'healer') enemies.push(new HealerEnemy(x, y));
                 if (enemyType === 'summoner') enemies.push(new SummonerEnemy(x, y));
                 if (enemyType === 'laser') enemies.push(new LaserEnemy(x, y));
+                if (enemyType === 'hexagon') enemies.push(new HexagonEnemy(x, y));
                 spawnTimer = 0;
             }
         } else if (enemies.length === 0) { gameState = 'WAVE_CLEAR'; waveClearTimer = 180; showWaveAnnouncer('WAVE CLEAR'); }
@@ -481,7 +508,7 @@ function animate() {
                     enemy.health -= projectile.damage;
                     if (projectile.pierceCount > 0) { projectile.pierceCount--; } else { projectiles.splice(j, 1); }
                     if (enemy.health <= 0) {
-                        if (enemy instanceof SquareEnemy) { for(let k=0; k<3; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
+                        if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
                         experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', enemy.xpValue));
                         enemies.splice(i, 1);
                         break;
