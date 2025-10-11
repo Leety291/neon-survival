@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네온 서바이버</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="lobby-modal">
+        <h1>네온 서바이버</h1>
+        <button id="start-game-btn">게임 시작</button>
+    </div>
+
+    <div id="game-over-modal" class="hidden">
+        <h1>게임 오버</h1>
+        <button id="restart-game-btn">다시 시작</button>
+    </div>
+
+    <div id="wave-display"></div>
+
+    <div id="ui-container" class="hidden">
+        <div id="stats">
+            <span>타워 체력: </span><span id="tower-hp">1000</span>
+            <span> | 플레이어 체력: </span><span id="player-hp">100</span>
+            <span> | 웨이브: </span><span id="wave">1</span>
+            <span> | 경험치: </span><span id="xp">0</span>
+        </div>
+        <div id="skill-bar">
+            <div class="skill-slot" id="skill-q">Q</div>
+            <div class="skill-slot" id="skill-e">E</div>
+            <div class="skill-slot" id="skill-r">R</div>
+        </div>
+    </div>
+
+    <div id="shop-modal" class="hidden">
+        <h2>- 업그레이드 상점 -</h2>
+        <button id="upgrade-tower-hp">타워 체력+ (비용: 100)</button>
+        <button id="add-sentry">보초 추가 (비용: 250)</button>
+        <button id="roulette-start-btn">능력 뽑기 (비용: 200)</button>
+        <p>상점 닫힘: <span id="shop-timer">10</span>초</p>
+        <button id="close-shop">닫기</button>
+    </div>
+
+    <div id="roulette-modal" class="hidden">
+        <h2>능력을 선택하세요!</h2>
+        <div class="roulette-options-container">
+            <div class="roulette-option" id="option-0">
+                <h3 class="option-title">능력 이름</h3>
+                <p class="option-desc">능력에 대한 설명입니다.</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+            <div class="roulette-option" id="option-1">
+                <h3 class="option-title">능력 이름</h3>
+                <p class="option-desc">능력에 대한 설명입니다.</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+            <div class="roulette-option" id="option-2">
+                <h3 class="option-title">능력 이름</h3>
+                <p class="option-desc">능력에 대한 설명입니다.</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" class="hidden"></canvas>
+    <script src="game.js"></script>
+</body>
+</html>

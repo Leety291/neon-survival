@@ -1,0 +1,194 @@
+body {
+    margin: 0;
+    background-color: #222;
+    color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    background-color: #222;
+}
+
+#wave-display {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 15px #fff;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+#wave-display.visible {
+    opacity: 0.7;
+}
+
+#ui-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none; /* UI doesn't block clicks on canvas */
+}
+
+#stats {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #0ff;
+    text-shadow: 0 0 5px #0ff;
+}
+
+#skill-bar {
+    display: flex;
+    gap: 10px;
+}
+
+.skill-slot {
+    width: 50px;
+    height: 50px;
+    border: 2px solid #fff;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 8px #fff;
+    transition: all 0.3s ease;
+}
+
+#shop-modal, #roulette-modal, #lobby-modal, #game-over-modal {
+    position: absolute;
+    background-color: rgba(10, 20, 30, 0.9);
+    border: 2px solid #0ff;
+    border-radius: 10px;
+    box-shadow: 0 0 25px #0ff;
+    text-align: center;
+    padding: 30px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#lobby-modal h1, #game-over-modal h1 {
+    margin: 0;
+    font-size: 48px;
+    color: #0ff;
+    text-shadow: 0 0 15px #0ff;
+}
+
+#game-over-modal h1 {
+    color: #f00;
+    text-shadow: 0 0 15px #f00;
+}
+
+#start-game-btn, #restart-game-btn {
+    background-color: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    padding: 15px 30px;
+    font-family: inherit;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px #fff;
+}
+
+#start-game-btn:hover, #restart-game-btn:hover {
+    background-color: #fff;
+    color: #000;
+    box-shadow: 0 0 20px #fff;
+}
+
+#shop-modal {
+    width: 400px;
+}
+
+#roulette-modal {
+    width: 700px;
+}
+
+#shop-modal h2, #roulette-modal h2 {
+    margin: 0 0 10px 0;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+}
+
+#shop-modal button, .select-option-btn {
+    background-color: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px #fff;
+}
+
+#shop-modal button:hover, .select-option-btn:hover {
+    background-color: #fff;
+    color: #000;
+    box-shadow: 0 0 15px #fff;
+}
+
+#shop-modal #close-shop {
+    margin-top: 10px;
+    border-color: #f00;
+    box-shadow: 0 0 8px #f00;
+}
+
+#shop-modal #close-shop:hover {
+    background-color: #f00;
+    color: #fff;
+    box-shadow: 0 0 15px #f00;
+}
+
+#shop-modal p {
+    color: #f00;
+    text-shadow: 0 0 8px #f00;
+}
+
+.roulette-options-container {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+}
+
+.roulette-option {
+    flex: 1;
+    border: 2px solid #aaa;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: rgba(0,0,0,0.3);
+}
+
+.roulette-option h3 {
+    margin-top: 0;
+    color: #FFD700;
+}
+
+.hidden {
+    display: none !important;
+}
