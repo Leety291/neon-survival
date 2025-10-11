@@ -243,7 +243,7 @@ class TriangleEnemy extends Enemy {
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 90, 20); }
+    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 60, 20); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
 }
 
@@ -296,7 +296,7 @@ class SummonerEnemy extends Enemy {
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 60, 50); this.state = 'moving'; this.aimDuration = 75; this.fireDuration = 20; this.aimTimer = 0; this.laserTarget = {}; }
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 120, 50); this.state = 'moving'; this.aimDuration = 75; this.fireDuration = 20; this.aimTimer = 0; this.laserTarget = {}; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -366,7 +366,7 @@ function resetGame() {
     gameState = 'LOBBY';
     player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3);
     tower = new Tower(canvas.width / 2, canvas.height / 2, 87, '#FF4500');
-    tower.health = 500; tower.maxHealth = 500;
+    tower.health = 750; tower.maxHealth = 750;
     sentryCost = 250;
     towerUpgradeCost = 100;
     addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`;
@@ -538,7 +538,7 @@ window.addEventListener('mousedown', e => { if (e.button === 0) keys.mouse0 = tr
 window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = false; });
 window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
-upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth += 200; tower.health = tower.maxHealth; towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
+upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth += 300; tower.health = Math.min(tower.health + 300, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
 addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost = Math.floor(sentryCost * 1.5); addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
 rouletteStartBtn.addEventListener('click', () => { const cost = 200; if (score >= cost) { score -= cost; shopModal.classList.add('hidden'); presentRouletteOptions(); } });
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; tower.x = canvas.width / 2; tower.y = canvas.height / 2; if(player) { player.x = canvas.width/2 + 100; player.y = canvas.height/2; } });
