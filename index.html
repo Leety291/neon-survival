@@ -10,12 +10,41 @@
 
     <div id="lobby-modal">
         <h1>네온 서바이버</h1>
+        <p id="high-score-display">최고 기록: WAVE <span id="high-score">0</span></p>
         <button id="start-game-btn">게임 시작</button>
+        <button id="controls-btn">조작법</button>
+        <button id="codex-btn">도감</button>
+    </div>
+
+    <div id="controls-modal" class="hidden">
+        <h2>- 조작법 -</h2>
+        <ul>
+            <li><b>WASD:</b> 플레이어 이동</li>
+            <li><b>마우스 좌클릭 / 스페이스바:</b> 기본 공격</li>
+            <li><b>Q, E, R:</b> 스킬 사용</li>
+            <li><b>ESC:</b> 일시정지 / 재개</li>
+            <li><b>타워 우클릭:</b> (상점 시간) 상점 열기</li>
+        </ul>
+        <button class="close-btn">닫기</button>
+    </div>
+
+    <div id="codex-modal" class="hidden">
+        <h2>- 도감 -</h2>
+        <div class="codex-section">
+            <h3>플레이어 능력</h3>
+            <div id="codex-player-upgrades"></div>
+        </div>
+        <div class="codex-section">
+            <h3>적 정보</h3>
+            <div id="codex-enemies"></div>
+        </div>
+        <button class="close-btn">닫기</button>
     </div>
 
     <div id="game-over-modal" class="hidden">
         <h1>게임 오버</h1>
-        <button id="restart-game-btn">다시 시작</button>
+        <p>이번 기록: WAVE <span id="current-score">0</span></p>
+        <button id="restart-game-btn">로비로 돌아가기</button>
     </div>
 
     <div id="wave-display"></div>
@@ -40,7 +69,7 @@
         <button id="add-sentry">보초 추가 (비용: 250)</button>
         <button id="roulette-start-btn">능력 뽑기 (비용: 200)</button>
         <p>상점 닫힘: <span id="shop-timer">10</span>초</p>
-        <button id="close-shop">닫기</button>
+        <button class="close-btn">닫기</button>
     </div>
 
     <div id="roulette-modal" class="hidden">
