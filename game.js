@@ -95,7 +95,7 @@ class ExperienceOrb {
 class Player {
     constructor(x, y, color, speed) {
         this.x = x; this.y = y; this.color = color; this.maxSpeed = speed;
-        this.width = 20; this.height = 30; this.angle = 0;
+        this.width = 30; this.height = 45; this.angle = 0;
         this.velocityX = 0; this.velocityY = 0;
         this.acceleration = 0.3; this.friction = 0.97;
         this.health = 100; this.maxHealth = 100;
@@ -225,7 +225,7 @@ class Tower {
 }
 
 class Sentry {
-    constructor(x, y) { this.x = x; this.y = y; this.radius = 10; this.color = '#00FFFF'; this.originalCooldown = 40; this.shootCooldown = 40; this.shootTimer = 0; this.range = 250; }
+    constructor(x, y) { this.x = x; this.y = y; this.radius = 15; this.color = '#00FFFF'; this.originalCooldown = 40; this.shootCooldown = 40; this.shootTimer = 0; this.range = 250; }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill(); }
     update() { this.draw(); if (this.shootTimer > 0) this.shootTimer--; this.shootCooldown = player.activeEffects['overdrive'] ? this.originalCooldown / 2 : this.originalCooldown; let closestEnemy = null, minDistance = this.range; enemies.forEach(enemy => { if(enemy instanceof LaserEnemy && enemy.state !== 'moving') return; const dist = Math.hypot(this.x - enemy.x, this.y - enemy.y); if (dist < minDistance) { minDistance = dist; closestEnemy = enemy; } }); if (closestEnemy && this.shootTimer <= 0) { const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x); const velocity = { x: Math.cos(angle) * 5, y: Math.sin(angle) * 5 }; projectiles.push(new Projectile(this.x, this.y, 4, this.color, velocity, 5)); this.shootTimer = this.shootCooldown; } }
 }
@@ -339,7 +339,7 @@ function resetGame() {
     score = 0; wave = 0; gameTime = 0;
     gameState = 'LOBBY';
     player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3);
-    tower = new Tower(canvas.width / 2, canvas.height / 2, 70, '#FF4500');
+    tower = new Tower(canvas.width / 2, canvas.height / 2, 105, '#FF4500');
     tower.health = 500; tower.maxHealth = 500;
     sentryCost = 250;
     towerUpgradeCost = 100;
