@@ -14,9 +14,15 @@ const codexModal = document.getElementById('codex-modal');
 const startGameBtn = document.getElementById('start-game-btn');
 const restartGameBtn = document.getElementById('restart-game-btn');
 const controlsBtn = document.getElementById('controls-btn');
-const closeControlsBtn = controlsModal.querySelector('.close-btn');
+let closeControlsBtn = null;
+if (controlsModal) {
+    closeControlsBtn = controlsModal.querySelector('.close-btn');
+}
 const codexBtn = document.getElementById('codex-btn');
-const closeCodexBtn = codexModal.querySelector('.close-btn');
+let closeCodexBtn = null;
+if (codexModal) {
+    closeCodexBtn = codexModal.querySelector('.close-btn');
+}
 
 const waveDisplay = document.getElementById('wave-display');
 const highScoreDisplayEl = document.getElementById('high-score-display');
@@ -77,6 +83,7 @@ function showWaveAnnouncer(text) {
 class Projectile {
     constructor(x, y, radius, color, velocity, damage = 10, pierceCount = 0, isExplosive = false, isContinuousExplosive = false) {
         this.x = x; this.y = y; this.radius = radius; this.color = color; this.velocity = velocity; this.damage = damage; this.pierceCount = pierceCount; this.isExplosive = isExplosive; this.isContinuousExplosive = isContinuousExplosive;
+        this.enemiesHitThisFrame = new Set(); // Add this line
     }
     draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.fill(); }
     update() {
@@ -88,6 +95,31 @@ class Projectile {
             // Spawn small particles continuously
             particles.push(new Particle(this.x, this.y, Math.random() * 2 + 1, 'red', { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 }));
         }
+    }
+}
+
+class DiamondProjectile extends Projectile {
+    constructor(x, y, radius, color, velocity, damage = 10, pierceCount = 0, isExplosive = false, isContinuousExplosive = false) {
+        super(x, y, radius, color, velocity, damage, pierceCount, isExplosive, isContinuousExplosive);
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        // Calculate angle based on velocity to make the diamond point in direction of travel
+        const angle = Math.atan2(this.velocity.y, this.velocity.x);
+        ctx.rotate(angle);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.moveTo(0, -this.radius);
+        ctx.lineTo(this.radius, 0);
+        ctx.lineTo(0, this.radius);
+        ctx.lineTo(-this.radius, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 }
 
@@ -123,6 +155,8 @@ class Player {
         this.invincibleTimer = 0;
         this.speedUpgradesCount = 0;
         this.firerateUpgradesCount = 0;
+        this.damageMultiplier = 1;
+        this.damageUpgradesCount = 0;
     }
 
     draw() {
@@ -161,15 +195,15 @@ class Player {
         if (this.shootTimer <= 0) {
             const projectileSpeed = 8;
             const baseVelocity = { x: Math.sin(this.angle) * projectileSpeed, y: -Math.cos(this.angle) * projectileSpeed };
-            let pierceCount = this.abilities.includes('piercing') ? 2 : 0;
+            let pierceCount = 0; // Piercing removed
             let isExplosive = this.abilities.includes('explosive');
-            projectiles.push(new Projectile(this.x, this.y, 5, '#00BFFF', baseVelocity, 10, pierceCount, isExplosive));
+            projectiles.push(new Projectile(this.x, this.y, 5, '#00BFFF', baseVelocity, 10 * this.damageMultiplier, pierceCount, isExplosive));
             if (this.abilities.includes('multishot')) {
                 const angle1 = this.angle - 0.2; const angle2 = this.angle + 0.2;
                 const vel1 = { x: Math.sin(angle1) * projectileSpeed, y: -Math.cos(angle1) * projectileSpeed };
                 const vel2 = { x: Math.sin(angle2) * projectileSpeed, y: -Math.cos(angle2) * projectileSpeed };
-                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel1, 5, pierceCount, isExplosive));
-                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel2, 5, pierceCount, isExplosive));
+                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel1, 5 * this.damageMultiplier, pierceCount, isExplosive));
+                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel2, 5 * this.damageMultiplier, pierceCount, isExplosive));
             }
             this.shootTimer = this.shootCooldown;
         }
@@ -251,18 +285,18 @@ class Enemy {
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y, xpValue = 10) { super(x, y, 25, '#FF0000', 1.2, 44, xpValue, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
+    constructor(x, y, xpValue = 10) { super(x, y, 25, '#FF0000', 1.5, 44, xpValue, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 4; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } }
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 60, 20, 15); }
+    constructor(x, y) { super(x, y, 31, '#FF4500', 1.0, 60, 20, 15); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
 }
 
 class ChristmasTreeEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 27, '#FFFF00', 1, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
+    constructor(x, y) { super(x, y, 27, '#FFFF00', 1.3, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     teleport() { if (!this.target) return; const behindDist = 80; const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x); this.x = this.target.x + Math.cos(angleToTarget) * behindDist; this.y = this.target.y + Math.sin(angleToTarget) * behindDist; }
     update() {
@@ -282,12 +316,12 @@ class ChristmasTreeEnemy extends Enemy {
 }
 
 class TinyTriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.5, 8, 1, 15); }
+    constructor(x, y) { super(x, y, 10, '#FF69B4', 3.0, 8, 1, 15); }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
 }
 
 class HealerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 74, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
+    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.9, 74, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; }
     draw() { 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -304,13 +338,13 @@ class HealerEnemy extends Enemy {
 }
 
 class SummonerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 37, '#9400D3', 0.5, 120, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 37, '#9400D3', 0.7, 120, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.radius, -Math.sin((18 + i * 72) * Math.PI / 180) * this.radius); } ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.summonTimer++; if (this.summonTimer >= this.summonCooldown) { enemies.push(new TinyTriangleEnemy(this.x, this.y)); enemies.push(new TinyTriangleEnemy(this.x, this.y)); this.summonTimer = 0; } }
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1, 333, 50, 15); this.state = 'moving'; this.aimDuration = 30; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; }
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1.2, 333, 50, 15); this.state = 'moving'; this.aimDuration = 45; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; }
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -318,12 +352,11 @@ class LaserEnemy extends Enemy {
         else if (this.state === 'aiming') {
             this.draw(); this.aimTimer--;
             ctx.save(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([15, 5]); ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.laserTarget.x, this.laserTarget.y); ctx.stroke(); ctx.restore();
-            if (this.aimTimer <= 0) { // After 0.5s delay, fire
+            if (this.aimTimer <= 0) { // After 0.75s delay, fire
+                const projectileSpeed = 10; // Adjust speed as needed
                 const angle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
-                for (let i = 0; i < 30; i++) {
-                    const vel = { x: Math.cos(angle) * 20, y: Math.sin(angle) * 20 };
-                    projectiles.push(new Projectile(this.x + vel.x / 20 * i * 2, this.y + vel.y / 20 * i * 2, 8, 'red', vel, 5, 0, true, true));
-                }
+                const vel = { x: Math.cos(angle) * projectileSpeed, y: Math.sin(angle) * projectileSpeed };
+                projectiles.push(new DiamondProjectile(this.x, this.y, 10, 'red', vel, 20, 0, true, false)); // Single explosive diamond projectile
                 this.state = 'moving'; // Go back to moving after firing
                 this.attackTimer = this.attackCooldown * 3; // Reset attack timer
                 this.consecutiveShots = 0; // Ensure reset
@@ -333,7 +366,7 @@ class LaserEnemy extends Enemy {
 }
 
 class HexagonEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.4, 150, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; }
+    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.6, 150, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; }
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -358,190 +391,56 @@ class HexagonEnemy extends Enemy {
     }
 }
 
-class Boss extends Enemy {
-    constructor(x, y) {
-        super(x, y, 80, '#FF00FF', 0.3, 2000, 500, 30); // Larger radius, very high health, high XP, high damage
-        this.name = "The Annihilator";
-        this.attackCooldown = 180; // 3 seconds
-        this.attackTimer = 0;
-        this.attackState = 'idle'; // 'idle', 'charging', 'firing'
-        this.chargeTimer = 0;
-        this.chargeDuration = 120; // 2 seconds
-        this.fireTimer = 0;
-        this.fireDuration = 60; // 1 second
-        this.laserAngle = 0;
-        this.laserTarget = { x: 0, y: 0 };
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.fillStyle = this.color;
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 30;
-        // Draw a complex shape for the boss, e.g., a star or a more intricate polygon
-        ctx.beginPath();
-        const spikes = 10;
-        const outerRadius = this.radius;
-        const innerRadius = this.radius / 2;
-        for (let i = 0; i < spikes * 2; i++) {
-            let radius = (i % 2 === 0) ? outerRadius : innerRadius;
-            let angle = Math.PI / spikes * i;
-            ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-
-        // Draw Gaster Blaster visual
-        if (this.attackState === 'charging' || this.attackState === 'firing') {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.laserAngle);
-
-            // Charging visual
-            if (this.attackState === 'charging') {
-                const chargeProgress = 1 - (this.chargeTimer / this.chargeDuration);
-                ctx.fillStyle = `rgba(255, 0, 0, ${0.2 + chargeProgress * 0.6})`;
-                ctx.shadowColor = 'red';
-                ctx.shadowBlur = 20;
-                ctx.beginPath();
-                ctx.ellipse(this.radius + 20, 0, 10 + chargeProgress * 20, 10 + chargeProgress * 5, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Firing visual (laser beam)
-            if (this.attackState === 'firing') {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-                ctx.shadowColor = 'red';
-                ctx.shadowBlur = 30;
-                ctx.fillRect(this.radius, -25, canvas.width, 50); // Wide laser beam
-            }
-            ctx.restore();
-        }
-    }
-
-    update() {
-        super.update(); // Basic movement towards target
-
-        if (this.attackState === 'idle') {
-            this.attackTimer++;
-            if (this.attackTimer >= this.attackCooldown) {
-                this.attackState = 'charging';
-                this.chargeTimer = this.chargeDuration;
-                this.laserTarget = { x: player.x, y: player.y }; // Aim at player
-                this.laserAngle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
-            }
-        } else if (this.attackState === 'charging') {
-            this.chargeTimer--;
-            if (this.chargeTimer <= 0) {
-                this.attackState = 'firing';
-                this.fireTimer = this.fireDuration;
-            }
-        } else if (this.attackState === 'firing') {
-            this.fireTimer--;
-            // Deal damage during firing
-            const laserWidth = 50; // Width of the laser beam
-            const laserLength = Math.hypot(canvas.width, canvas.height); // Max length of the laser
-
-            // Check collision with player
-            const distPlayerToLaserOrigin = Math.hypot(player.x - this.x, player.y - this.y);
-            const anglePlayerToLaserOrigin = Math.atan2(player.y - this.y, player.x - this.x);
-            const angleDiffPlayerLaser = Math.abs(this.laserAngle - anglePlayerToLaserOrigin);
-
-            // Simplified collision check: if player is roughly in the laser path
-            if (distPlayerToLaserOrigin < laserLength && angleDiffPlayerLaser < 0.1) { // 0.1 radians is approx 5.7 degrees
-                player.health -= 1; // Small continuous damage
-            }
-
-            // Check collision with tower
-            const distTowerToLaserOrigin = Math.hypot(tower.x - this.x, tower.y - this.y);
-            const angleTowerToLaserOrigin = Math.atan2(tower.y - this.y, tower.x - this.x);
-            const angleDiffTowerLaser = Math.abs(this.laserAngle - angleTowerToLaserOrigin);
-
-            if (distTowerToLaserOrigin < laserLength && angleDiffTowerLaser < 0.1) {
-                tower.health -= 1; // Small continuous damage
-            }
-
-            if (this.fireTimer <= 0) {
-                this.attackState = 'idle';
-                this.attackTimer = 0;
-            }
-        }
-    }
-}
-
-const waveConfig = [ { triangle: 5, square: 0, tree: 0 }, { triangle: 8, square: 2, tree: 0 }, { triangle: 5, square: 5, tree: 1 }, { triangle: 0, square: 10, tree: 3 }, { triangle: 15, square: 8, tree: 5 }, { triangle: 12, square: 10, tree: 3, healer: 1 }, { triangle: 15, square: 5, tree: 5, summoner: 1 }, { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } ];
+const waveConfig = [
+    { triangle: 5, square: 0, tree: 0 }, // Wave 1
+    { triangle: 8, square: 2, tree: 0 }, // Wave 2
+    { triangle: 5, square: 5, tree: 1 }, // Wave 3
+    { triangle: 0, square: 10, tree: 3 }, // Wave 4
+    { laser: 15 }, // Wave 5
+    { triangle: 12, square: 10, tree: 3, healer: 1 }, // Wave 6
+    { triangle: 15, square: 5, tree: 5, summoner: 1 }, // Wave 7
+    { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, // Wave 8
+    { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, // Wave 9
+    { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } // Wave 10
+];
 
 function startWave() {
-
     wave++;
-
     waveEl.textContent = wave;
-
     showWaveAnnouncer(`WAVE ${wave}`);
-
     gameState = 'WAVE_IN_PROGRESS';
 
-
-
-    if (wave % 5 === 0) { // Boss wave
-
-        currentBoss = new Boss(canvas.width / 2, -100); // Spawn boss off-screen initially
-
-        enemies.push(currentBoss);
-
-        document.getElementById('boss-name').textContent = currentBoss.name;
-
-        document.getElementById('boss-health-bar').classList.remove('hidden');
-
-        enemiesToSpawn = []; // No regular enemies on boss wave
-
-    } else { // Regular wave
-
-        currentBoss = null; // Ensure no boss from previous boss wave
-
-        document.getElementById('boss-health-bar').classList.add('hidden');
-
-        const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1) };
-
-        enemiesToSpawn = [];
-
-        for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle');
-
-        for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square');
-
-        for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree');
-
-        for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer');
-
-        for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner');
-
-        for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser');
-
-        for (let i = 0; i < (currentWave.hexagon || 0); i++) enemiesToSpawn.push('hexagon');
-
-        enemiesToSpawn.sort(() => Math.random() - 0.5);
-
+    currentBoss = null; // Ensure no boss
+    const bossHealthBar = document.getElementById('boss-health-bar');
+    if (bossHealthBar) {
+        bossHealthBar.classList.add('hidden');
     }
 
+    const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1) };
+    enemiesToSpawn = [];
+    for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle');
+    for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square');
+    for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree');
+    for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer');
+    for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner');
+    for (let i = 0; i < (currentWave.laser || 0); i++) enemiesToSpawn.push('laser');
+    for (let i = 0; i < (currentWave.hexagon || 0); i++) enemiesToSpawn.push('hexagon');
+    enemiesToSpawn.sort(() => Math.random() - 0.5);
+
     rouletteStartBtn.disabled = false;
-
     spawnTimer = 0;
-
     shopAnnounced = false;
-
 }
 
 const upgradePool = [
     { id: 'heal', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
     { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
     { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
+    { id: 'damage', name: '데미지 증가', description: '공격력이 25% 증가합니다. (최대 2회)', maxStacks: 2, apply: (p) => { p.damageMultiplier += 0.25; p.damageUpgradesCount++; } },
     { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
     { id: 'blink', name: '점멸', description: '[Q,E,R] 키로 짧은 거리를 순간이동합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
     { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
     { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
-    { id: 'piercing', name: '관통탄', description: '기본 총알이 2명의 적을 추가로 관통합니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('piercing')) p.abilities.push('piercing'); } },
     { id: 'multishot', name: '다중 발사', description: '기본 공격 시 3방향으로 총알을 발사합니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('multishot')) p.abilities.push('multishot'); } },
     { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
 ];
@@ -555,6 +454,7 @@ function presentRouletteOptions() {
         // Filter out upgrades that have reached maxStacks
         if (upg.id === 'speed' && upg.maxStacks && player.speedUpgradesCount >= upg.maxStacks) return false;
         if (upg.id === 'firerate' && upg.maxStacks && player.firerateUpgradesCount >= upg.maxStacks) return false;
+        if (upg.id === 'damage' && upg.maxStacks && player.damageUpgradesCount >= upg.maxStacks) return false;
 
         return true;
     });
@@ -668,22 +568,6 @@ function animate() {
         enemies.forEach(e => e.draw());
     }
 
-    // Update boss health bar
-    if (currentBoss) {
-        const bossHpFill = document.getElementById('boss-hp-fill');
-        bossHpFill.style.width = `${(currentBoss.health / currentBoss.maxHealth) * 100}%`;
-        if (currentBoss.health <= 0) {
-            // Boss defeated
-            currentBoss = null;
-            document.getElementById('boss-health-bar').classList.add('hidden');
-            // Clear remaining enemies if any
-            enemies = [];
-            gameState = 'WAVE_CLEAR'; // Transition to wave clear
-            waveClearTimer = 180;
-            showWaveAnnouncer('BOSS DEFEATED!');
-        }
-    }
-
     if (player.state === 'DEAD') {
         ctx.save();
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -695,6 +579,11 @@ function animate() {
 
     if (gameState === 'WAVE_IN_PROGRESS') {
         gameTime++;
+
+        projectiles.forEach(projectile => {
+            projectile.enemiesHitThisFrame.clear(); // Clear for this frame's collision checks
+        });
+
         if (enemiesToSpawn.length > 0) {
             spawnTimer = (spawnTimer || 0) + 1;
             if (spawnTimer >= 100) {
@@ -709,12 +598,12 @@ function animate() {
                 if (enemyType === 'hexagon') enemies.push(new HexagonEnemy(x, y));
                 spawnTimer = 0;
             }
-        } else if (enemies.length === 0) { gameState = 'WAVE_CLEAR'; waveClearTimer = 180; showWaveAnnouncer('WAVE CLEAR'); }
+        } else if (enemies.length === 0) { gameState = 'WAVE_CLEAR'; waveClearTimer = 120; showWaveAnnouncer('WAVE CLEAR'); }
         for (let i = enemies.length - 1; i >= 0; i--) {
             const enemy = enemies[i];
             if (player.state === 'ALIVE') {
-                const distPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y); 
-                if (distPlayer - enemy.radius - player.width / 2 < 1 && player.invincibleTimer <= 0) { 
+                const distPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                if (distPlayer - enemy.radius - player.width / 2 < 1 && player.invincibleTimer <= 0) {
                     if(enemy.attackTimer <= 0){
                         player.health -= enemy.damage;
                         enemy.attackTimer = enemy.attackCooldown;
@@ -727,20 +616,35 @@ function animate() {
                 }
                 if (player.activeEffects['barrier']) { const distBarrier = Math.hypot(player.x - enemy.x, player.y - enemy.y); if (distBarrier < player.width * 2.5 + enemy.radius) { enemy.health -= 0.5; } }
             }
-            const distTower = Math.hypot(tower.x - enemy.x, tower.y - enemy.y); if (distTower - enemy.radius - tower.size / 2 < 1) { if(enemy.attackTimer <= 0){ tower.health -= enemy.damage; enemy.attackTimer = enemy.attackCooldown; } }
+            const distTower = Math.hypot(tower.x - enemy.x, tower.y - enemy.y); 
+            if (distTower - enemy.radius - tower.size / 2 < 1) { 
+                if(enemy.attackTimer <= 0){ 
+                    tower.health -= enemy.damage; 
+                    enemy.attackTimer = enemy.attackCooldown; 
+                } 
+            }
             for (let j = projectiles.length - 1; j >= 0; j--) {
                 const projectile = projectiles[j];
                 if (!projectile || !enemy) continue;
+
+                if (projectile.enemiesHitThisFrame.has(enemy)) {
+                    continue; 
+                }
+
                 const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
                 if (dist - enemy.radius - projectile.radius < 1) {
-                    if (projectile.isExplosive) { for (let k = 0; k < 20; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 6, 'orange', { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 })); } enemies.forEach(expEnemy => { if(expEnemy !== enemy) { const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y); if (expDist < 75) { expEnemy.health -= 10; } } }); }
+                    projectile.enemiesHitThisFrame.add(enemy);
+
+                    if (projectile.isExplosive) { for (let k = 0; k < 40; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 10 + 5, 'orange', { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 })); } enemies.forEach(expEnemy => { if(expEnemy !== enemy) { const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y); if (expDist < 75) { expEnemy.health -= 10; } } }); }
                     enemy.health -= projectile.damage;
-                    if (projectile.pierceCount > 0) { projectile.pierceCount--; } else { projectiles.splice(j, 1); }
+                    
+                    if (projectile.pierceCount > 0) { 
+                        projectile.pierceCount--; 
+                    } else { 
+                        projectiles.splice(j, 1); 
+                    }
+
                     if (enemy.health <= 0) {
-                        if (enemy === currentBoss) { // Boss defeated, handled above
-                            enemies.splice(i, 1); // Remove boss from enemies array
-                            break;
-                        }
                         if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
                         experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + (Math.random() * 20 - 10))));
                         enemies.splice(i, 1);
@@ -749,7 +653,8 @@ function animate() {
                 }
             }
         }
-    } else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 600; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
+    }
+    else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 300; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
     if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/3600).toString().padStart(2, '0')}:${Math.floor((gameTime/60)%60).toString().padStart(2, '0')})`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
     playerHpEl.textContent = player.health; towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
@@ -773,7 +678,7 @@ window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = fals
 window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
 upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth = Math.min(1000, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
-addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost = Math.floor(sentryCost * 1.5); addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
+addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost += 100; addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
 rouletteStartBtn.addEventListener('click', () => {
     console.log(`Roulette: Current score = ${score}, Cost = ${rouletteCost}`);
     if (score >= rouletteCost) {
