@@ -157,6 +157,7 @@ class Player {
         this.firerateUpgradesCount = 0;
         this.damageMultiplier = 1;
         this.damageUpgradesCount = 0;
+        this.multishotUpgradesCount = 0;
     }
 
     draw() {
@@ -194,17 +195,34 @@ class Player {
     shoot() {
         if (this.shootTimer <= 0) {
             const projectileSpeed = 8;
-            const baseVelocity = { x: Math.sin(this.angle) * projectileSpeed, y: -Math.cos(this.angle) * projectileSpeed };
-            let pierceCount = 0; // Piercing removed
+            const baseAngle = this.angle;
+            const spread = 0.25;
             let isExplosive = this.abilities.includes('explosive');
-            projectiles.push(new Projectile(this.x, this.y, 5, '#00BFFF', baseVelocity, 10 * this.damageMultiplier, pierceCount, isExplosive));
-            if (this.abilities.includes('multishot')) {
-                const angle1 = this.angle - 0.2; const angle2 = this.angle + 0.2;
+            let pierceCount = 0;
+
+            const projectileCount = this.multishotUpgradesCount + 1;
+
+            if (projectileCount === 1) {
+                const vel = { x: Math.sin(baseAngle) * projectileSpeed, y: -Math.cos(baseAngle) * projectileSpeed };
+                projectiles.push(new Projectile(this.x, this.y, 5, '#00BFFF', vel, 10 * this.damageMultiplier, pierceCount, isExplosive));
+            } else if (projectileCount === 2) {
+                const angle1 = baseAngle - spread / 2;
+                const angle2 = baseAngle + spread / 2;
                 const vel1 = { x: Math.sin(angle1) * projectileSpeed, y: -Math.cos(angle1) * projectileSpeed };
                 const vel2 = { x: Math.sin(angle2) * projectileSpeed, y: -Math.cos(angle2) * projectileSpeed };
+                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel1, 8 * this.damageMultiplier, pierceCount, isExplosive));
+                projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel2, 8 * this.damageMultiplier, pierceCount, isExplosive));
+            } else if (projectileCount >= 3) {
+                const angle1 = baseAngle - spread;
+                const angle2 = baseAngle + spread;
+                const velCenter = { x: Math.sin(baseAngle) * projectileSpeed, y: -Math.cos(baseAngle) * projectileSpeed };
+                const vel1 = { x: Math.sin(angle1) * projectileSpeed, y: -Math.cos(angle1) * projectileSpeed };
+                const vel2 = { x: Math.sin(angle2) * projectileSpeed, y: -Math.cos(angle2) * projectileSpeed };
+                projectiles.push(new Projectile(this.x, this.y, 5, '#00BFFF', velCenter, 10 * this.damageMultiplier, pierceCount, isExplosive));
                 projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel1, 5 * this.damageMultiplier, pierceCount, isExplosive));
                 projectiles.push(new Projectile(this.x, this.y, 4, '#00BFFF', vel2, 5 * this.damageMultiplier, pierceCount, isExplosive));
             }
+
             this.shootTimer = this.shootCooldown;
         }
     }
@@ -395,7 +413,7 @@ const waveConfig = [
     { triangle: 5, square: 0, tree: 0 }, // Wave 1
     { triangle: 8, square: 2, tree: 0 }, // Wave 2
     { triangle: 5, square: 5, tree: 1 }, // Wave 3
-    { triangle: 0, square: 10, tree: 3 }, // Wave 4
+    { triangle: 0, square: 7, tree: 3 }, // Wave 4
     { laser: 15 }, // Wave 5
     { triangle: 12, square: 10, tree: 3, healer: 1 }, // Wave 6
     { triangle: 15, square: 5, tree: 5, summoner: 1 }, // Wave 7
