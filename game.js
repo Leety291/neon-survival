@@ -281,6 +281,18 @@ class Player {
         if (this.y - this.height / 2 < 0) { this.y = this.height / 2; this.velocityY = 0; }
         if (this.y + this.height / 2 > canvas.height) { this.y = canvas.height - this.height / 2; this.velocityY = 0; }
 
+        // Tower collision
+        const distTowerPlayer = Math.hypot(this.x - tower.x, this.y - tower.y);
+        const playerCollisionRadius = this.width / 2; // Approximation for the player triangle
+        const towerCollisionRadius = tower.size / 2;
+
+        if (distTowerPlayer < playerCollisionRadius + towerCollisionRadius) {
+            const angle = Math.atan2(this.y - tower.y, this.x - tower.x);
+            const overlap = (playerCollisionRadius + towerCollisionRadius) - distTowerPlayer;
+            this.x += Math.cos(angle) * overlap;
+            this.y += Math.sin(angle) * overlap;
+        }
+
         this.draw();
     }
 }
@@ -311,12 +323,53 @@ class TriangleEnemy extends Enemy {
 class SquareEnemy extends Enemy {
     constructor(x, y) { super(x, y, 31, '#FF4500', 1.0, 60, 20, 15); }
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
+    update() { 
+        if (this.attackTimer > 0) this.attackTimer--; 
+        this.target = tower; // Always target the tower
+                const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+        
+                const oldX = this.x;
+                const oldY = this.y;
+        
+                this.x += Math.cos(angle) * this.speed; 
+                this.y += Math.sin(angle) * this.speed; 
+        
+                // Tower collision
+                const distTowerEnemy = Math.hypot(this.x - tower.x, this.y - tower.y);
+                const enemyCollisionRadius = this.radius;
+                const towerCollisionRadius = tower.size / 2;
+        
+                if (distTowerEnemy < enemyCollisionRadius + towerCollisionRadius) {
+                    this.x = oldX;
+                    this.y = oldY;
+                }
+        
+                this.draw(); 
+    }
 }
 
 class ChristmasTreeEnemy extends Enemy {
     constructor(x, y) { super(x, y, 27, '#FFFF00', 1.3, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    teleport() { if (!this.target) return; const behindDist = 80; const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x); this.x = this.target.x + Math.cos(angleToTarget) * behindDist; this.y = this.target.y + Math.sin(angleToTarget) * behindDist; }
+    teleport() { 
+        if (!this.target) return;
+        const behindDist = 100; // Increased distance slightly for better positioning
+
+        if (this.target === player && player.state === 'ALIVE') {
+            // Angle from player to mouse (where player is looking)
+            const lookAngle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            // Angle directly behind the player's look direction
+            const behindAngle = lookAngle + Math.PI;
+            // New position is 'behindDist' away from the player at the 'behindAngle'
+            this.x = player.x + Math.cos(behindAngle) * behindDist;
+            this.y = player.y + Math.sin(behindAngle) * behindDist;
+        } else {
+            // Keep original behavior if target is the tower or player is dead
+            const angleToTarget = Math.atan2(this.y - this.target.y, this.x - this.target.x);
+            this.x = this.target.x + Math.cos(angleToTarget) * behindDist;
+            this.y = this.target.y + Math.sin(angleToTarget) * behindDist;
+        }
+    }
     update() {
         if (this.teleportState === 'fadingOut') {
             this.alpha -= 0.05;
@@ -325,7 +378,27 @@ class ChristmasTreeEnemy extends Enemy {
             this.alpha += 0.05;
             if (this.alpha >= 1) { this.alpha = 1; this.teleportState = 'none'; }
         } else {
-            super.update();
+            if (this.attackTimer > 0) this.attackTimer--;
+            this.target = (player.state === 'ALIVE') ? player : tower;
+
+            if (this.target && this.target.state === 'ALIVE') {
+                const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                const oldX = this.x;
+                const oldY = this.y;
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                // Tower collision
+                const distTowerEnemy = Math.hypot(this.x - tower.x, this.y - tower.y);
+                const enemyCollisionRadius = this.radius;
+                const towerCollisionRadius = tower.size / 2;
+
+                if (distTowerEnemy < enemyCollisionRadius + towerCollisionRadius) {
+                    this.x = oldX;
+                    this.y = oldY;
+                }
+            }
+
             this.teleportTimer++;
             if (!this.hasTeleported && this.teleportTimer >= this.initialCooldown) { this.teleportState = 'fadingOut'; this.hasTeleported = true; this.teleportTimer = 0; } 
         }
@@ -366,20 +439,61 @@ class LaserEnemy extends Enemy {
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
-        if (this.state === 'moving') { super.update(); if (this.attackTimer <= 0) { this.state = 'aiming'; this.aimTimer = this.aimDuration; this.laserTarget = { x: player.x, y: player.y }; } } 
+
+        if (this.state === 'moving') {
+            // Always target the player, unless they are dead
+            this.target = (player.state === 'ALIVE') ? player : tower;
+            if (this.target && this.target.state === 'ALIVE') {
+                const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                const oldX = this.x;
+                const oldY = this.y;
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                // Tower collision
+                const distTowerEnemy = Math.hypot(this.x - tower.x, this.y - tower.y);
+                const enemyCollisionRadius = this.radius;
+                const towerCollisionRadius = tower.size / 2;
+                if (distTowerEnemy < enemyCollisionRadius + towerCollisionRadius) {
+                    this.x = oldX;
+                    this.y = oldY;
+                }
+            }
+            
+            if (this.attackTimer <= 0) {
+                this.state = 'aiming';
+                this.aimTimer = this.aimDuration;
+                this.laserTarget = { x: player.x, y: player.y };
+            }
+        } 
         else if (this.state === 'aiming') {
-            this.draw(); this.aimTimer--;
-            ctx.save(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([15, 5]); ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.laserTarget.x, this.laserTarget.y); ctx.stroke(); ctx.restore();
-            if (this.aimTimer <= 0) { // After 0.75s delay, fire
-                const projectileSpeed = 10; // Adjust speed as needed
+            this.aimTimer--;
+            // Draw aiming line
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([15, 5]);
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.laserTarget.x, this.laserTarget.y);
+            ctx.stroke();
+            ctx.restore();
+
+            if (this.aimTimer <= 0) { // After delay, fire
+                const projectileSpeed = 15;
                 const angle = Math.atan2(this.laserTarget.y - this.y, this.laserTarget.x - this.x);
                 const vel = { x: Math.cos(angle) * projectileSpeed, y: Math.sin(angle) * projectileSpeed };
-                projectiles.push(new DiamondProjectile(this.x, this.y, 10, 'red', vel, 20, 0, true, false)); // Single explosive diamond projectile
-                this.state = 'moving'; // Go back to moving after firing
-                this.attackTimer = this.attackCooldown * 3; // Reset attack timer
-                this.consecutiveShots = 0; // Ensure reset
+                
+                const laserProjectile = new DiamondProjectile(this.x, this.y, 10, 'red', vel, 20, 0, true, false);
+                laserProjectile.isFromLaserEnemy = true; // Keep this for the tower collision
+                laserProjectile.owner = this; // Set the owner to prevent self-collision
+                projectiles.push(laserProjectile);
+
+                this.state = 'moving';
+                this.attackTimer = this.attackCooldown * 3;
             }
         }
+        this.draw();
     }
 }
 
@@ -412,14 +526,14 @@ class HexagonEnemy extends Enemy {
 const waveConfig = [
     { triangle: 5, square: 0, tree: 0 }, // Wave 1
     { triangle: 8, square: 2, tree: 0 }, // Wave 2
-    { triangle: 5, square: 5, tree: 1 }, // Wave 3
-    { triangle: 0, square: 7, tree: 3 }, // Wave 4
-    { laser: 15 }, // Wave 5
-    { triangle: 12, square: 10, tree: 3, healer: 1 }, // Wave 6
-    { triangle: 15, square: 5, tree: 5, summoner: 1 }, // Wave 7
-    { triangle: 10, square: 10, tree: 2, laser: 2, hexagon: 1 }, // Wave 8
-    { triangle: 0, square: 0, tree: 0, healer: 3, summoner: 2, laser: 3, hexagon: 1 }, // Wave 9
-    { triangle: 20, square: 15, tree: 8, healer: 2, summoner: 2, laser: 2, hexagon: 2 } // Wave 10
+    { triangle: 3, square: 3, tree: 1, tinyTriangle: 7 }, // Wave 3
+    { triangle: 2, square: 4, tree: 3 }, // Wave 4
+    { laser: 7 }, // Wave 5
+    { triangle: 10, square: 8, tree: 3, healer: 1, summoner: 1 }, // Wave 6
+    { triangle: 12, square: 5, tree: 4, summoner: 1, healer: 1, laser: 1 }, // Wave 7
+    { triangle: 8, square: 8, tree: 3, laser: 3, hexagon: 1, healer: 1 }, // Wave 8
+    { triangle: 10, healer: 2, summoner: 2, laser: 3, hexagon: 1 }, // Wave 9
+    { triangle: 15, square: 10, tree: 5, healer: 3, summoner: 3, laser: 4, hexagon: 2 } // Wave 10
 ];
 
 function startWave() {
@@ -438,6 +552,7 @@ function startWave() {
     enemiesToSpawn = [];
     for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle');
     for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square');
+    for (let i = 0; i < (currentWave.tinyTriangle || 0); i++) enemiesToSpawn.push('tinyTriangle');
     for (let i = 0; i < (currentWave.tree || 0); i++) enemiesToSpawn.push('tree');
     for (let i = 0; i < (currentWave.healer || 0); i++) enemiesToSpawn.push('healer');
     for (let i = 0; i < (currentWave.summoner || 0); i++) enemiesToSpawn.push('summoner');
@@ -459,7 +574,7 @@ const upgradePool = [
     { id: 'blink', name: '점멸', description: '[Q,E,R] 키로 짧은 거리를 순간이동합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
     { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
     { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
-    { id: 'multishot', name: '다중 발사', description: '기본 공격 시 3방향으로 총알을 발사합니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('multishot')) p.abilities.push('multishot'); } },
+    { id: 'multishot', name: '다중 발사', description: '기본 공격에 총알을 하나 추가합니다. (최대 3발)', maxStacks: 2, apply: (p) => { p.multishotUpgradesCount++; } },
     { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
 ];
 
@@ -473,6 +588,7 @@ function presentRouletteOptions() {
         if (upg.id === 'speed' && upg.maxStacks && player.speedUpgradesCount >= upg.maxStacks) return false;
         if (upg.id === 'firerate' && upg.maxStacks && player.firerateUpgradesCount >= upg.maxStacks) return false;
         if (upg.id === 'damage' && upg.maxStacks && player.damageUpgradesCount >= upg.maxStacks) return false;
+        if (upg.id === 'multishot' && upg.maxStacks && player.multishotUpgradesCount >= upg.maxStacks) return false;
 
         return true;
     });
@@ -491,9 +607,9 @@ function resetGame() {
     tower.health = 500; tower.maxHealth = 500;
     // ... (inside upgradeTowerHpBtn event listener)
     tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth);
-    sentryCost = 250;
+    sentryCost = 150;
     towerUpgradeCost = 100;
-    rouletteCost = 200; // Reset roulette cost
+    rouletteCost = 150; // Reset roulette cost
     addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`;
     upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`;
     rouletteStartBtn.textContent = `능력 뽑기 (비용: ${rouletteCost})`; // Set initial button text
@@ -543,11 +659,13 @@ function populateCodex() {
     codexEnemiesDiv.innerHTML = '';
     const enemyDescriptions = [
         { name: '삼각형 적', desc: '가장 기본적인 적입니다. 플레이어나 타워를 향해 돌진하며, 가까워지면 잠시 빨라집니다.' },
-        { name: '사각형 적', desc: '삼각형 적보다 느리지만 체력이 높습니다. 파괴되면 작은 삼각형 3마리로 분열합니다.' },
-        { name: '크리스마스 트리 적', desc: '플레이어나 타워의 뒤로 순간이동하여 공격합니다. 순간이동 시 잠시 사라졌다가 나타납니다.' },
+        { name: '사각형 적', desc: '느리지만 체력이 높고 타워만 공격합니다. 파괴되면 작은 삼각형 2마리로 분열합니다.' },
+        { name: '크리스마스 트리 적', desc: '플레이어만 노리며 등 뒤로 순간이동하여 공격합니다. 순간이동 시 잠시 사라졌다가 나타납니다.' },
         { name: '힐러 (십자가)', desc: '주변의 아군 적들의 체력을 주기적으로 회복시킵니다. 우선적으로 제거해야 합니다.' },
         { name: '소환사 (오각형)', desc: '멀리서 작은 삼각형 적들을 계속해서 소환합니다. 소환 주기가 빠릅니다.' },
-        { name: '레이저 사수 (마름모)', desc: '조준선을 보여준 후 강력한 레이저를 발사합니다. 조준 시간이 짧아졌습니다.' },
+        { name: '레이저 사수 (마름모)', desc: '조준선을 보여준 후 강력한 폭발성 발사체를 발사합니다.' },
+        { name: '작은 삼각형 적', desc: '사각형 적이 파괴될 때 나타나는 작고 빠른 적입니다.' },
+        { name: '육각형 적', desc: '주기적으로 다른 적(레이저 사수)을 소환하는 위협적인 적입니다.' },
     ];
     enemyDescriptions.forEach(enemy => {
         const entry = document.createElement('div');
@@ -609,6 +727,7 @@ function animate() {
                 if (Math.random() < 0.5) { x = Math.random() < 0.5 ? 0 - radius : canvas.width + radius; y = Math.random() * canvas.height; } else { x = Math.random() * canvas.width; y = Math.random() < 0.5 ? 0 - radius : canvas.height + radius; }
                 if (enemyType === 'triangle') enemies.push(new TriangleEnemy(x, y, wave === 1 ? 60 : 10));
                 if (enemyType === 'square') enemies.push(new SquareEnemy(x, y));
+                if (enemyType === 'tinyTriangle') enemies.push(new TinyTriangleEnemy(x, y));
                 if (enemyType === 'tree') enemies.push(new ChristmasTreeEnemy(x, y));
                 if (enemyType === 'healer') enemies.push(new HealerEnemy(x, y));
                 if (enemyType === 'summoner') enemies.push(new SummonerEnemy(x, y));
@@ -645,6 +764,15 @@ function animate() {
                 const projectile = projectiles[j];
                 if (!projectile || !enemy) continue;
 
+                if (projectile.owner === enemy) {
+                    continue; // Skip collision check if the enemy is the owner
+                }
+
+                // Allow LaserEnemy projectiles to pierce other LaserEnemies
+                if (projectile.isFromLaserEnemy && enemy instanceof LaserEnemy) {
+                    continue;
+                }
+
                 if (projectile.enemiesHitThisFrame.has(enemy)) {
                     continue; 
                 }
@@ -664,10 +792,25 @@ function animate() {
 
                     if (enemy.health <= 0) {
                         if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
-                        experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + (Math.random() * 20 - 10))));
+                        const xpBonus = wave > 1 ? 5 : 0;
+                        experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + xpBonus + (Math.random() * 20 - 10))));
                         enemies.splice(i, 1);
                         break;
                     }
+                }
+            }
+        }
+
+        // Projectile-Tower Collision
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const projectile = projectiles[i];
+
+            // Check only for projectiles fired by LaserEnemy
+            if (projectile.isFromLaserEnemy) {
+                const dist = Math.hypot(projectile.x - tower.x, projectile.y - tower.y);
+                if (dist < projectile.radius + tower.size / 2) {
+                    tower.health -= projectile.damage;
+                    projectiles.splice(i, 1); // Remove projectile on hit
                 }
             }
         }
@@ -696,7 +839,7 @@ window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = fals
 window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
 upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth = Math.min(1000, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
-addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost += 100; addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
+addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost += 75; addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
 rouletteStartBtn.addEventListener('click', () => {
     console.log(`Roulette: Current score = ${score}, Cost = ${rouletteCost}`);
     if (score >= rouletteCost) {
