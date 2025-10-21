@@ -639,7 +639,10 @@ class BlinkingEnemy extends Enemy {
                 if (dist < this.radius / 2 + targetRadius) {
                     if (target.invincibleTimer <= 0) {
                          target.health -= this.damage;
-                         if(target === player) player.invincibleTimer = 30;
+                         if(target === player) {
+                            target.health = Math.max(0, target.health);
+                            player.invincibleTimer = 30;
+                         }
                     }
                 }
             });
@@ -728,6 +731,7 @@ class BoomerangProjectile extends Projectile {
         if (!this.hitTargets.has(player) && distPlayer < this.radius + player.width / 2) {
             if (player.invincibleTimer <= 0) {
                 player.health -= this.damage;
+                player.health = Math.max(0, player.health);
                 this.hitTargets.add(player);
             }
         }
@@ -1011,6 +1015,7 @@ function animate() {
                 if (distPlayer - enemy.radius - player.width / 2 < 1 && player.invincibleTimer <= 0) {
                     if(enemy.attackTimer <= 0){
                         player.health -= enemy.damage;
+                        player.health = Math.max(0, player.health);
                         enemy.attackTimer = enemy.attackCooldown;
                         if(player.health <= 0) {
                             player.state = 'DEAD';
@@ -1028,58 +1033,83 @@ function animate() {
                     enemy.attackTimer = enemy.attackCooldown; 
                 } 
             }
-            for (let j = projectiles.length - 1; j >= 0; j--) {
-                const projectile = projectiles[j];
-                if (!projectile || !enemy) continue;
+        }
 
-                if (projectile.owner === enemy) {
-                    continue; // Skip collision check if the enemy is the owner
-                }
+        // Player/Sentry Projectile - Enemy Collision
+        for (let j = projectiles.length - 1; j >= 0; j--) {
+            const projectile = projectiles[j];
+            // Check if projectile is from player or sentry (i.e., not an enemy projectile)
+            if (!projectile.owner && !projectile.isFromLaserEnemy && !(projectile instanceof BoomerangProjectile)) {
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+                    if (!projectile || !enemy) continue;
 
-                // Allow LaserEnemy projectiles to pierce other LaserEnemies
-                if (projectile.isFromLaserEnemy && enemy instanceof LaserEnemy) {
-                    continue;
-                }
-
-                if (projectile.enemiesHitThisFrame.has(enemy)) {
-                    continue; 
-                }
-
-                const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
-                if (dist - enemy.radius - projectile.radius < 1) {
-                    projectile.enemiesHitThisFrame.add(enemy);
-
-                    if (projectile.isExplosive) { 
-                        for (let k = 0; k < 40; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 10 + 5, 'orange', { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 })); } enemies.forEach(expEnemy => { if(expEnemy !== enemy) { const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y); if (expDist < 75) { expEnemy.health -= 10; } } }); }
-                    enemy.health -= projectile.damage;
-                    
-                    if (projectile.pierceCount > 0) { 
-                        projectile.pierceCount--; 
-                    } else { 
-                        projectiles.splice(j, 1); 
+                    if (projectile.enemiesHitThisFrame.has(enemy)) {
+                        continue;
                     }
 
-                    if (enemy.health <= 0) {
-                        if (enemy instanceof SquareEnemy) { for(let k=0; k<2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
-                        const xpBonus = wave > 1 ? 5 : 0;
-                        experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + xpBonus + (Math.random() * 20 - 10))));
-                        enemies.splice(i, 1);
-                        break;
+                    const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
+                    if (dist - enemy.radius - projectile.radius < 1) {
+                        projectile.enemiesHitThisFrame.add(enemy);
+
+                        if (projectile.isExplosive) {
+                            for (let k = 0; k < 40; k++) { particles.push(new Particle(projectile.x, projectile.y, Math.random() * 10 + 5, 'orange', { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 })); } 
+                            enemies.forEach(expEnemy => {
+                                if (expEnemy !== enemy) {
+                                    const expDist = Math.hypot(projectile.x - expEnemy.x, projectile.y - expEnemy.y);
+                                    if (expDist < 75) {
+                                        expEnemy.health -= 10;
+                                    }
+                                }
+                            });
+                        }
+                        enemy.health -= projectile.damage;
+                        
+                        if (projectile.pierceCount > 0) {
+                            projectile.pierceCount--;
+                        } else {
+                            projectiles.splice(j, 1);
+                        }
+
+                        if (enemy.health <= 0) {
+                            if (enemy instanceof SquareEnemy) { for (let k = 0; k < 2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
+                            const xpBonus = wave > 1 ? 5 : 0;
+                            experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + xpBonus + (Math.random() * 20 - 10))));
+                            enemies.splice(i, 1);
+                        }
+                        if (projectiles[j] === undefined) break;
                     }
                 }
             }
         }
 
-        // Projectile-Tower Collision
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const projectile = projectiles[i];
+        // Enemy Projectile - Player/Tower Collision
+        for (let j = projectiles.length - 1; j >= 0; j--) {
+            const projectile = projectiles[j];
+            // Check if projectile is from an enemy
+            if (projectile.owner instanceof Enemy || projectile.isFromLaserEnemy || projectile instanceof BoomerangProjectile) {
+                // Collision with Player
+                const distPlayer = Math.hypot(projectile.x - player.x, projectile.y - player.y);
+                if (distPlayer < projectile.radius + player.width / 2) {
+                    if (player.invincibleTimer <= 0) {
+                        player.health -= projectile.damage;
+                        player.health = Math.max(0, player.health);
+                        player.invincibleTimer = 30;
+                    }
+                    if (!(projectile.pierceCount > 0) && !(projectile instanceof BoomerangProjectile)) {
+                        projectiles.splice(j, 1);
+                        continue;
+                    }
+                }
 
-            // Check only for projectiles fired by LaserEnemy
-            if (projectile.isFromLaserEnemy) {
-                const dist = Math.hypot(projectile.x - tower.x, projectile.y - tower.y);
-                if (dist < projectile.radius + tower.size / 2) {
+                // Collision with Tower
+                const distTower = Math.hypot(projectile.x - tower.x, projectile.y - tower.y);
+                if (distTower < projectile.radius + tower.size / 2) {
                     tower.health -= projectile.damage;
-                    projectiles.splice(i, 1); // Remove projectile on hit
+                    if (!(projectile.pierceCount > 0) && !(projectile instanceof BoomerangProjectile)) {
+                        projectiles.splice(j, 1);
+                        continue;
+                    }
                 }
             }
         }
@@ -1087,7 +1117,7 @@ function animate() {
     else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 300; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
     if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/3600).toString().padStart(2, '0')}:${Math.floor((gameTime/60)%60).toString().padStart(2, '0')})`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
-    playerHpEl.textContent = player.health; towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
+    playerHpEl.textContent = Math.max(0, player.health); towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
     enemyCountEl.textContent = enemies.length;
     const skillKeys = ['q', 'e', 'r']; const skillColors = { nova: '#FFD700', blink: '#00FFFF', barrier: '#FF00FF', overdrive: '#FFA500' };
     skillKeys.forEach((key, i) => { const skillId = player.skills[i]; if (skillId) { skillSlots[key].style.borderColor = skillColors[skillId]; skillSlots[key].style.opacity = 1 - (player.skillTimers[skillId] / player.skillCooldowns[skillId]); } else { skillSlots[key].style.borderColor = '#fff'; skillSlots[key].style.opacity = 0.4; } });
