@@ -792,14 +792,13 @@ class BoomerangEnemy extends Enemy {
 const waveConfig = [
     { triangle: 5, square: 0, tree: 0 }, // Wave 1
     { triangle: 8, square: 2, tree: 0 }, // Wave 2
-    { triangle: 2, square: 2, tree: 1, boomerang: 1, tinyTriangle: 5 }, // Wave 3
-    { triangle: 1, square: 3, tree: 2, boomerang: 1, blinking: 1 }, // Wave 4
-    { laser: 7, blinking: 2 }, // Wave 5
-    { triangle: 10, square: 8, tree: 3, healer: 1, summoner: 1, boomerang: 2 }, // Wave 6
-    { triangle: 12, square: 5, tree: 4, summoner: 1, healer: 1, laser: 1, blinking: 3 }, // Wave 7
-    { triangle: 8, square: 8, tree: 3, laser: 3, hexagon: 1, healer: 1, boomerang: 3 }, // Wave 8
-    { triangle: 10, healer: 2, summoner: 2, laser: 3, hexagon: 1, blinking: 4 }, // Wave 9
-    { triangle: 15, square: 10, tree: 5, healer: 3, summoner: 3, laser: 4, hexagon: 2, boomerang: 4, blinking: 4 } // Wave 10
+    { triangle: 2, square: 2, tree: 2, boomerang: 1, tinyTriangle: 3, blinking: 2 }, // Wave 3
+    { laser: 5, blinking: 2, square: 2, healer: 3 }, // Wave 4
+    { triangle: 10, square: 8, tree: 3, healer: 1, summoner: 1, boomerang: 2 }, // Wave 5
+    { triangle: 12, square: 5, tree: 4, summoner: 1, healer: 1, laser: 1, blinking: 3 }, // Wave 6
+    { triangle: 8, square: 8, tree: 3, laser: 3, hexagon: 1, healer: 1, boomerang: 3 }, // Wave 7
+    { triangle: 10, healer: 2, summoner: 2, laser: 3, hexagon: 1, blinking: 4 }, // Wave 8
+    { triangle: 15, square: 10, tree: 5, healer: 3, summoner: 3, laser: 4, hexagon: 2, boomerang: 4, blinking: 4 } // Wave 9
 ];
 
 function startWave() {
