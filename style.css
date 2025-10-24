@@ -128,61 +128,64 @@ canvas {
     box-shadow: 0 0 20px #fff;
 }
 
-#shop-modal, #controls-modal {
-    width: 400px;
-}
+    #shop-modal {
+        width: 700px;
+    }
 
-#roulette-modal {
-    width: 700px;
-}
+    #controls-modal {
+        width: 400px;
+    }
 
-#codex-modal {
-    width: 800px;
-    max-height: 80vh;
-    overflow-y: auto;
-}
+    #roulette-modal {
+        width: 700px;
+    }
 
-#shop-modal h2, #roulette-modal h2 {
-    margin: 0 0 10px 0;
-    color: #0ff;
-    text-shadow: 0 0 10px #0ff;
-}
+    #codex-modal {
+        width: 800px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
 
-#shop-modal button, .select-option-btn, .close-btn {
-    background-color: transparent;
-    border: 2px solid #fff;
-    color: #fff;
-    padding: 10px;
-    font-family: inherit;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 8px #fff;
-}
+    #shop-modal h2, #roulette-modal h2 {
+        margin: 0 0 10px 0;
+        color: #0ff;
+        text-shadow: 0 0 10px #0ff;
+    }
 
-#shop-modal button:hover, .select-option-btn:hover, .close-btn:hover {
-    background-color: #fff;
-    color: #000;
-    box-shadow: 0 0 15px #fff;
-}
+    #shop-modal button, .select-option-btn, .close-btn {
+        background-color: transparent;
+        border: 2px solid #fff;
+        color: #fff;
+        padding: 10px;
+        font-family: inherit;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 8px #fff;
+    }
 
-#shop-modal #close-shop, .close-btn {
-    margin-top: 10px;
-    border-color: #f00;
-    box-shadow: 0 0 8px #f00;
-}
+    #shop-modal button:hover, .select-option-btn:hover, .close-btn:hover {
+        background-color: #fff;
+        color: #000;
+        box-shadow: 0 0 15px #fff;
+    }
 
-#shop-modal #close-shop:hover, .close-btn:hover {
-    background-color: #f00;
-    color: #fff;
-    box-shadow: 0 0 15px #f00;
-}
+    #shop-modal #close-shop, .close-btn {
+        margin-top: 10px;
+        border-color: #f00;
+        box-shadow: 0 0 8px #f00;
+    }
 
-#shop-modal p {
-    color: #f00;
-    text-shadow: 0 0 8px #f00;
-}
+    #shop-modal #close-shop:hover, .close-btn:hover {
+        background-color: #f00;
+        color: #fff;
+        box-shadow: 0 0 15px #f00;
+    }
 
+    #shop-modal p {
+        color: #fff;
+        text-shadow: 0 0 8px #fff;
+    }
 #controls-modal ul {
     list-style: none;
     padding: 0;

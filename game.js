@@ -36,9 +36,6 @@ const waveEl = document.getElementById('wave');
 const xpEl = document.getElementById('xp');
 const shopModal = document.getElementById('shop-modal');
 const shopTimerEl = document.getElementById('shop-timer');
-const upgradeTowerHpBtn = document.getElementById('upgrade-tower-hp');
-const addSentryBtn = document.getElementById('add-sentry');
-const rouletteStartBtn = document.getElementById('roulette-start-btn');
 const closeShopBtn = shopModal.querySelector('.close-btn');
 const skillSlots = { q: document.getElementById('skill-q'), e: document.getElementById('skill-e'), r: document.getElementById('skill-r') };
 const rouletteModal = document.getElementById('roulette-modal');
@@ -59,8 +56,7 @@ let score, wave, enemiesToSpawn, spawnTimer, gameTime;
 let gameState, previousGameState, waveClearTimer, shopPhaseTimer, shopAnnounced;
 let player, tower;
 let animationId;
-let sentryCost, towerUpgradeCost;
-let rouletteCost = 200;
+let shopCosts = {};
 let currentBoss = null;
 
 // --- Drawing ---
@@ -138,10 +134,10 @@ class ExperienceOrb {
 // --- Game Character Classes ---
 class Player {
     constructor(x, y, color, speed) {
-        this.x = x; this.y = y; this.color = color; this.maxSpeed = speed;
+        this.x = x; this.y = y; this.color = color; this.maxSpeed = 3.0;
         this.width = 25; this.height = 37; this.angle = 0;
         this.velocityX = 0; this.velocityY = 0;
-        this.acceleration = 0.3; // Reverted
+        this.acceleration = 0.35; // Reverted
         this.friction = 0.97;
         this.health = 100; this.maxHealth = 100;
         this.shootCooldown = 20; // Reverted
@@ -351,13 +347,13 @@ class Enemy {
 }
 
 class TriangleEnemy extends Enemy {
-    constructor(x, y, xpValue = 10) { super(x, y, 25, '#FF0000', 1.2, 44, xpValue, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; } // Speed reduced
+    constructor(x, y, xpValue = 10) { super(x, y, 25, '#FF0000', 1.4, 44, xpValue, 15); this.dashCooldown = 180; this.dashTimer = Math.random() * 180; } // Speed reduced
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.dashTimer++; if (this.target) { const distTarget = Math.hypot(this.target.x - this.x, this.target.y - this.y); if (this.dashTimer > this.dashCooldown && distTarget < 250) { this.speed = 3.2; setTimeout(() => { this.speed = this.originalSpeed; }, 150); this.dashTimer = 0; } } } // Dash speed reduced
 }
 
 class SquareEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 31, '#FF4500', 0.8, 60, 20, 15); } // Speed reduced
+    constructor(x, y) { super(x, y, 31, '#FF4500', 1.0, 60, 20, 15); } // Speed reduced
     draw() { ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); }
     update() { 
         if (this.attackTimer > 0) this.attackTimer--; 
@@ -385,7 +381,7 @@ class SquareEnemy extends Enemy {
 }
 
 class ChristmasTreeEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 27, '#FFFF00', 1.0, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; } // Speed reduced
+    constructor(x, y) { super(x, y, 27, '#FFFF00', 1.2, 90, 30, 22); this.initialCooldown = 120 + Math.random() * 180; this.teleportTimer = 0; this.hasTeleported = false; this.alpha = 1; this.teleportState = 'none'; } // Speed reduced
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, 0); ctx.lineTo(this.radius, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-this.radius * 0.8, this.radius); ctx.lineTo(this.radius * 0.8, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
     teleport() { 
         if (!this.target) return;
@@ -443,12 +439,12 @@ class ChristmasTreeEnemy extends Enemy {
 }
 
 class TinyTriangleEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.4, 8, 1, 15); } // Speed reduced
+    constructor(x, y) { super(x, y, 10, '#FF69B4', 2.8, 8, 1, 15); } // Speed reduced
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(-this.radius, this.radius); ctx.lineTo(this.radius, this.radius); ctx.closePath(); ctx.fill(); ctx.restore(); }
 }
 
 class HealerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.7, 74, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; } // Speed reduced
+    constructor(x, y) { super(x, y, 25, '#00FF7F', 0.9, 74, 25, 15); this.healCooldown = 180; this.healTimer = 0; this.healRadius = 150; } // Speed reduced
     draw() { 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -465,13 +461,13 @@ class HealerEnemy extends Enemy {
 }
 
 class SummonerEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 37, '#9400D3', 0.6, 120, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; } // Speed reduced
+    constructor(x, y) { super(x, y, 37, '#9400D3', 0.8, 120, 40, 15); this.summonCooldown = 180; this.summonTimer = 0; } // Speed reduced
     draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.radius, -Math.sin((18 + i * 72) * Math.PI / 180) * this.radius); } ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() { super.update(); this.summonTimer++; if (this.summonTimer >= this.summonCooldown) { enemies.push(new TinyTriangleEnemy(this.x, this.y)); enemies.push(new TinyTriangleEnemy(this.x, this.y)); this.summonTimer = 0; } }
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1.0, 333, 50, 15); this.state = 'moving'; this.aimDuration = 45; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; } // Speed reduced
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1.2, 333, 50, 15); this.state = 'moving'; this.aimDuration = 45; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; } // Speed reduced
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -534,7 +530,7 @@ class LaserEnemy extends Enemy {
 }
 
 class HexagonEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.5, 150, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; } // Speed reduced
+    constructor(x, y) { super(x, y, 29, '#8A2BE2', 0.6, 150, 60, 15); this.summonCooldown = 240; this.summonTimer = 0; } // Speed reduced
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -561,7 +557,7 @@ class HexagonEnemy extends Enemy {
 
 class BlinkingEnemy extends Enemy {
     constructor(x, y) {
-        super(x, y, 30, '#FF1493', 0.8, 100, 70, 30);
+        super(x, y, 30, '#FF1493', 1.0, 100, 70, 30);
         this.state = 'moving'; // moving, telegraphing, blinking
         this.blinkCooldown = 300;
         this.blinkTimer = Math.random() * 300;
@@ -741,7 +737,7 @@ class BoomerangProjectile extends Projectile {
 
 class BoomerangEnemy extends Enemy {
     constructor(x, y) {
-        super(x, y, 28, '#8B4513', 1.2, 120, 80, 20);
+        super(x, y, 28, '#8B4513', 1.4, 120, 80, 20);
         this.throwCooldown = 240;
         this.throwTimer = Math.random() * 240;
         this.idealDistance = 300;
@@ -827,41 +823,83 @@ function startWave() {
     for (let i = 0; i < (currentWave.boomerang || 0); i++) enemiesToSpawn.push('boomerang');
     enemiesToSpawn.sort(() => Math.random() - 0.5);
 
-    rouletteStartBtn.disabled = false;
     spawnTimer = 0;
     shopAnnounced = false;
 }
 
-const upgradePool = [
-    { id: 'heal', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
-    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
-    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', maxStacks: 5, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
-    { id: 'damage', name: '데미지 증가', description: '공격력이 25% 증가합니다. (최대 2회)', maxStacks: 2, apply: (p) => { p.damageMultiplier += 0.25; p.damageUpgradesCount++; } },
-    { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
-    { id: 'blink', name: '점멸', description: '[우클릭] 또는 [Q,E,R] 키로 짧은 거리를 순간이동하며 경로의 적에게 피해를 줍니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
-    { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
-    { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'skill', apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
-    { id: 'multishot', name: '다중 발사', description: '기본 공격에 총알을 하나 추가합니다. (최대 3발)', maxStacks: 2, apply: (p) => { p.multishotUpgradesCount++; } },
-    { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'ability', apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
+const shopUpgradePool = [
+    // Tower Upgrades
+    { id: 'towerHealth', name: '타워 체력 +250', description: '타워의 최대 체력과 현재 체력을 250 늘립니다.', type: 'tower', cost: 100, costIncrease: 100, apply: () => { tower.maxHealth = Math.min(700, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); } },
+    { id: 'addSentry', name: '보초 추가', description: '타워를 방어하는 자동 포탑을 추가합니다.', type: 'tower', cost: 150, costIncrease: 75, apply: () => { const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); } },
+    // Player Upgrades
+    { id: 'playerHealth', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', type: 'player', cost: 50, costIncrease: 0, apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
+    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', type: 'player', cost: 150, costIncrease: 50, maxStacks: 5, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
+    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', type: 'player', cost: 150, costIncrease: 50, maxStacks: 5, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
+    { id: 'damage', name: '데미지 증가', description: '공격력이 25% 증가합니다. (최대 2회)', type: 'player', cost: 250, costIncrease: 100, maxStacks: 2, apply: (p) => { p.damageMultiplier += 0.25; p.damageUpgradesCount++; } },
+    { id: 'multishot', name: '다중 발사', description: '기본 공격에 총알을 하나 추가합니다. (최대 3발)', type: 'player', cost: 300, costIncrease: 150, maxStacks: 2, apply: (p) => { p.multishotUpgradesCount++; } },
+    { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'player', cost: 400, costIncrease: 0, isAbility: true, apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
+    // Skills
+    { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
+    { id: 'blink', name: '점멸', description: '[우클릭] 또는 [Q,E,R] 키로 짧은 거리를 순간이동하며 경로의 적에게 피해를 줍니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
+    { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
+    { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
 ];
 
-function presentRouletteOptions() { 
-    const availableUpgrades = upgradePool.filter(upg => {
-        if (upg.type === 'skill' && player.skills.length >= 3) return false;
-        if (upg.type === 'skill' && player.skills.includes(upg.id)) return false;
-        if (upg.type === 'ability' && player.abilities.includes(upg.id)) return false;
 
-        // Filter out upgrades that have reached maxStacks
-        if (upg.id === 'speed' && upg.maxStacks && player.speedUpgradesCount >= upg.maxStacks) return false;
-        if (upg.id === 'firerate' && upg.maxStacks && player.firerateUpgradesCount >= upg.maxStacks) return false;
-        if (upg.id === 'damage' && upg.maxStacks && player.damageUpgradesCount >= upg.maxStacks) return false;
-        if (upg.id === 'multishot' && upg.maxStacks && player.multishotUpgradesCount >= upg.maxStacks) return false;
+function generateShopOptions() {
+    const availableUpgrades = shopUpgradePool.filter(upg => {
+        if (upg.id === 'addSentry' && sentries.length >= 3) return false;
+        if (upg.id === 'towerHealth' && tower.maxHealth >= 700) return false;
+        if (upg.isSkill && player.skills.length >= 3) return false;
+        if (upg.isSkill && player.skills.includes(upg.id)) return false;
+        if (upg.isAbility && player.abilities.includes(upg.id)) return false;
 
+        if (upg.maxStacks) {
+            if (upg.id === 'speed' && player.speedUpgradesCount >= upg.maxStacks) return false;
+            if (upg.id === 'firerate' && player.firerateUpgradesCount >= upg.maxStacks) return false;
+            if (upg.id === 'damage' && player.damageUpgradesCount >= upg.maxStacks) return false;
+            if (upg.id === 'multishot' && player.multishotUpgradesCount >= upg.maxStacks) return false;
+        }
         return true;
     });
-    console.log(`Presenting roulette options. Available upgrades count: ${availableUpgrades.length}`);
-    const chosenUpgrades = availableUpgrades.sort(() => 0.5 - Math.random()).slice(0, 3); for (let i = 0; i < 3; i++) { const optionEl = document.getElementById(`option-${i}`); const titleEl = optionEl.querySelector('.option-title'); const descEl = optionEl.querySelector('.option-desc'); const btnEl = optionEl.querySelector('.select-option-btn'); if (chosenUpgrades[i]) { const upgrade = chosenUpgrades[i]; titleEl.textContent = upgrade.name; descEl.textContent = upgrade.description; const newBtn = btnEl.cloneNode(true); btnEl.parentNode.replaceChild(newBtn, btnEl);
-            newBtn.onclick = () => { upgrade.apply(player); rouletteModal.classList.add('hidden'); }; optionEl.style.display = 'flex'; } else { optionEl.style.display = 'none'; } } rouletteModal.classList.remove('hidden'); }
+
+    const chosenUpgrades = availableUpgrades.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    for (let i = 0; i < 3; i++) {
+        const optionEl = document.getElementById(`shop-option-${i}`);
+        if (chosenUpgrades[i]) {
+            const upgrade = chosenUpgrades[i];
+            const titleEl = optionEl.querySelector('.option-title');
+            const descEl = optionEl.querySelector('.option-desc');
+            const btnEl = optionEl.querySelector('.select-option-btn');
+
+            titleEl.textContent = upgrade.name;
+            descEl.textContent = `${upgrade.description} (비용: ${shopCosts[upgrade.id]})`;
+
+            const newBtn = btnEl.cloneNode(true);
+            btnEl.parentNode.replaceChild(newBtn, btnEl);
+            newBtn.onclick = () => purchaseShopOption(upgrade);
+            optionEl.style.display = 'flex';
+        } else {
+            optionEl.style.display = 'none';
+        }
+    }
+}
+
+function purchaseShopOption(upgrade) {
+    const cost = shopCosts[upgrade.id];
+    if (score >= cost) {
+        score -= cost;
+        upgrade.apply(player);
+        if (upgrade.costIncrease) {
+            shopCosts[upgrade.id] += upgrade.costIncrease;
+        }
+        shopModal.classList.add('hidden');
+    } else {
+        // Optional: Add feedback for not enough score
+        console.log("Not enough score!");
+    }
+}
 
 // --- Game Flow & State Management ---
 function resetGame() {
@@ -869,17 +907,15 @@ function resetGame() {
     projectiles = []; enemies = []; particles = []; experienceOrbs = []; sentries = [];
     score = 0; wave = 0; gameTime = 0;
     gameState = 'LOBBY';
-    player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 2.5); // Reverted speed further
+    player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3.0);
     tower = new Tower(canvas.width / 2, canvas.height / 2, 87, '#FF4500');
-    tower.health = 500; tower.maxHealth = 500;
-    // ... (inside upgradeTowerHpBtn event listener)
-    tower.maxHealth += 250; tower.health = Math.min(tower.health + 250, tower.maxHealth);
-    sentryCost = 150;
-    towerUpgradeCost = 100;
-    rouletteCost = 150; // Reset roulette cost
-    addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`;
-    upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`;
-    rouletteStartBtn.textContent = `능력 뽑기 (비용: ${rouletteCost})`; // Set initial button text
+    tower.health = 500; tower.maxHealth = 700;
+
+    // Initialize costs
+    shopUpgradePool.forEach(upg => {
+        shopCosts[upg.id] = upg.cost;
+    });
+
     loadHighScore();
     Object.values(skillSlots).forEach(slot => { slot.style.borderColor = '#fff'; slot.style.boxShadow = '0 0 8px #fff'; slot.style.opacity = 0.4; slot.innerHTML = slot.id.slice(-1).toUpperCase(); });
 }
@@ -994,7 +1030,7 @@ function animate() {
             if (spawnTimer >= 120) { // Reverted further
                 const enemyType = enemiesToSpawn.pop(); let x, y; const radius = 20;
                 if (Math.random() < 0.5) { x = Math.random() < 0.5 ? 0 - radius : canvas.width + radius; y = Math.random() * canvas.height; } else { x = Math.random() * canvas.width; y = Math.random() < 0.5 ? 0 - radius : canvas.height + radius; }
-                if (enemyType === 'triangle') enemies.push(new TriangleEnemy(x, y, wave === 1 ? 60 : 10));
+                if (enemyType === 'triangle') enemies.push(new TriangleEnemy(x, y, wave === 1 ? 40 : 10));
                 if (enemyType === 'square') enemies.push(new SquareEnemy(x, y));
                 if (enemyType === 'tinyTriangle') enemies.push(new TinyTriangleEnemy(x, y));
                 if (enemyType === 'tree') enemies.push(new ChristmasTreeEnemy(x, y));
@@ -1143,20 +1179,18 @@ window.addEventListener('mousedown', e => {
     }
 });
 window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = false; });
-window.addEventListener('contextmenu', e => { e.preventDefault(); if (gameState === 'SHOP_PHASE') { const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); if (dist < tower.size) { shopModal.classList.remove('hidden'); rouletteStartBtn.disabled = false; } } });
-closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
-upgradeTowerHpBtn.addEventListener('click', () => { if (score >= towerUpgradeCost) { score -= towerUpgradeCost; tower.maxHealth = Math.min(1000, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); towerUpgradeCost += 100; upgradeTowerHpBtn.textContent = `타워 체력+ (비용: ${towerUpgradeCost})`; } });
-addSentryBtn.addEventListener('click', () => { if (score >= sentryCost) { score -= sentryCost; const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); sentryCost += 75; addSentryBtn.textContent = `보초 추가 (비용: ${sentryCost})`; } });
-rouletteStartBtn.addEventListener('click', () => {
-    console.log(`Roulette: Current score = ${score}, Cost = ${rouletteCost}`);
-    if (score >= rouletteCost) {
-        score -= rouletteCost;
-        shopModal.classList.add('hidden');
-        presentRouletteOptions();
-        rouletteCost += 50; // Increase cost after purchase
-        rouletteStartBtn.textContent = `능력 뽑기 (비용: ${rouletteCost})`; // Update button text
-    }
+window.addEventListener('contextmenu', e => { 
+    e.preventDefault(); 
+    if (gameState === 'SHOP_PHASE') { 
+        const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); 
+        if (dist < tower.size) { 
+            generateShopOptions(); 
+            shopModal.classList.remove('hidden'); 
+        } 
+    } 
 });
+closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
+
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; tower.x = canvas.width / 2; tower.y = canvas.height / 2; if(player) { player.x = canvas.width/2 + 100; player.y = canvas.height/2; } });
 
 // --- Initial call ---

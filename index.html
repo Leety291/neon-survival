@@ -65,10 +65,24 @@
     </div>
 
     <div id="shop-modal" class="hidden">
-        <h2>- 업그레이드 상점 -</h2>
-        <button id="upgrade-tower-hp">타워 체력+ (비용: 100)</button>
-        <button id="add-sentry">보초 추가 (비용: 250)</button>
-        <button id="roulette-start-btn">능력 뽑기 (비용: 200)</button>
+        <h2>- 랜덤 업그레이드 -</h2>
+        <div class="roulette-options-container">
+            <div class="roulette-option" id="shop-option-0" style="display: none;">
+                <h3 class="option-title">업그레이드 1</h3>
+                <p class="option-desc">비용: 100</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+            <div class="roulette-option" id="shop-option-1" style="display: none;">
+                <h3 class="option-title">업그레이드 2</h3>
+                <p class="option-desc">비용: 100</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+            <div class="roulette-option" id="shop-option-2" style="display: none;">
+                <h3 class="option-title">업그레이드 3</h3>
+                <p class="option-desc">비용: 100</p>
+                <button class="select-option-btn">선택</button>
+            </div>
+        </div>
         <p>상점 닫힘: <span id="shop-timer">10</span>초</p>
         <button class="close-btn">닫기</button>
     </div>
