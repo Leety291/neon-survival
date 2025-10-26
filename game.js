@@ -950,15 +950,19 @@ function loadHighScore() {
 }
 
 function resetHighScore() {
-    if (confirm("정말로 최고 기록을 초기화하시겠습니까?")) {
+    const password = prompt("기록을 초기화하려면 비밀번호를 입력하세요:");
+    if (password === "0415") {
         localStorage.removeItem('neonSurvivorHighScore');
         loadHighScore();
+        alert("최고 기록이 초기화되었습니다.");
+    } else {
+        alert("비밀번호가 올바르지 않습니다.");
     }
 }
 
 function populateCodex() {
     codexPlayerUpgradesDiv.innerHTML = '';
-    upgradePool.forEach(upg => {
+    shopUpgradePool.forEach(upg => {
         const entry = document.createElement('div');
         entry.classList.add('codex-entry');
         entry.innerHTML = `<h4>${upg.name}</h4><p>${upg.description}</p>`;
