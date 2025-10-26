@@ -14,6 +14,7 @@ const codexModal = document.getElementById('codex-modal');
 const startGameBtn = document.getElementById('start-game-btn');
 const restartGameBtn = document.getElementById('restart-game-btn');
 const controlsBtn = document.getElementById('controls-btn');
+const resetHighScoreBtn = document.getElementById('reset-highscore-btn');
 let closeControlsBtn = null;
 if (controlsModal) {
     closeControlsBtn = controlsModal.querySelector('.close-btn');
@@ -944,10 +945,15 @@ function saveHighScore() {
 
 function loadHighScore() {
     const storedHighScore = JSON.parse(localStorage.getItem('neonSurvivorHighScore')) || { wave: 0, time: 0 };
-    const minutes = Math.floor(storedHighScore.time / 60 / 60);
-    const seconds = Math.floor((storedHighScore.time / 60) % 60);
-    const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    highScoreEl.textContent = `WAVE ${storedHighScore.wave} (시간: ${formattedTime})`;
+    const totalSeconds = Math.floor(storedHighScore.time / 60);
+    highScoreEl.textContent = `WAVE ${storedHighScore.wave} (시간: ${totalSeconds}초)`;
+}
+
+function resetHighScore() {
+    if (confirm("정말로 최고 기록을 초기화하시겠습니까?")) {
+        localStorage.removeItem('neonSurvivorHighScore');
+        loadHighScore();
+    }
 }
 
 function populateCodex() {
@@ -1151,7 +1157,7 @@ function animate() {
     }
     else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 300; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
-    if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/3600).toString().padStart(2, '0')}:${Math.floor((gameTime/60)%60).toString().padStart(2, '0')})`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
+    if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/60)}초)`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
     playerHpEl.textContent = Math.max(0, player.health); towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
     enemyCountEl.textContent = enemies.length;
     const skillKeys = ['q', 'e', 'r']; const skillColors = { nova: '#FFD700', blink: '#00FFFF', barrier: '#FF00FF', overdrive: '#FFA500' };
@@ -1162,6 +1168,7 @@ function animate() {
 // --- Event Listeners ---
 startGameBtn.addEventListener('click', () => { lobbyModal.classList.add('hidden'); initGame(); });
 restartGameBtn.addEventListener('click', () => { gameOverModal.classList.add('hidden'); lobbyModal.classList.remove('hidden'); loadHighScore(); });
+resetHighScoreBtn.addEventListener('click', resetHighScore);
 controlsBtn.addEventListener('click', () => { controlsModal.classList.remove('hidden'); });
 closeControlsBtn.addEventListener('click', () => { controlsModal.classList.add('hidden'); });
 codexBtn.addEventListener('click', () => { populateCodex(); codexModal.classList.remove('hidden'); });
