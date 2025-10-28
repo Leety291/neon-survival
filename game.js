@@ -34,7 +34,6 @@ const enemyCountEl = document.getElementById('enemy-count');
 const towerHpEl = document.getElementById('tower-hp');
 const playerHpEl = document.getElementById('player-hp');
 const waveEl = document.getElementById('wave');
-const xpEl = document.getElementById('xp');
 const shopModal = document.getElementById('shop-modal');
 const shopTimerEl = document.getElementById('shop-timer');
 const closeShopBtn = shopModal.querySelector('.close-btn');
@@ -57,8 +56,8 @@ let score, wave, enemiesToSpawn, spawnTimer, gameTime;
 let gameState, previousGameState, waveClearTimer, shopPhaseTimer, shopAnnounced;
 let player, tower;
 let animationId;
-let shopCosts = {};
 let currentBoss = null;
+let selectedUpgradesCount = 0;
 
 // --- Drawing ---
 function drawBackgroundGrid() {
@@ -123,14 +122,10 @@ class DiamondProjectile extends Projectile {
 class Particle {
     constructor(x, y, radius, color, velocity) { this.x = x; this.y = y; this.radius = radius; this.color = color; this.velocity = velocity; this.alpha = 1; }
     draw() { ctx.save(); ctx.globalAlpha = this.alpha; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 10; ctx.fill(); ctx.restore(); }
-    update() { this.draw(); this.velocity.x *= 0.99; this.velocity.y *= 0.99; this.x += this.velocity.x; this.y += this.velocityY; this.alpha -= 0.02; }
+    update() { this.draw(); this.velocity.x *= 0.99; this.velocity.y *= 0.99; this.x += this.velocity.x; this.y += this.velocity.y; this.alpha -= 0.02; }
 }
 
-class ExperienceOrb {
-    constructor(x, y, radius, color, value) { this.x = x; this.y = y; this.radius = radius; this.color = color; this.value = value; }
-    draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.fill(); }
-    update() { this.draw(); }
-}
+
 
 // --- Game Character Classes ---
 class Player {
@@ -145,9 +140,10 @@ class Player {
         this.shootTimer = 0;
         this.abilities = [];
         this.skills = []; // Reverted: Blink is no longer a default skill
-        this.skillCooldowns = { nova: 300, blink: 400, barrier: 600, overdrive: 1200 }; // Reverted
-        this.skillTimers = {};
         this.skillDurations = {};
+        this.originalSkillCooldowns = { nova: 450, blink: 600, barrier: 900, overdrive: 1800 }; // 초기 쿨타임을 길게 설정
+        this.skillCooldowns = { ...this.originalSkillCooldowns }; // originalSkillCooldowns로 초기화
+        this.skillTimers = {};
         this.activeEffects = {};
         this.state = 'ALIVE';
         this.reviveTimer = 0;
@@ -157,6 +153,7 @@ class Player {
         this.damageMultiplier = 1;
         this.damageUpgradesCount = 0;
         this.multishotUpgradesCount = 0;
+        this.skillCooldownReductionStacks = 0;
     }
 
     draw() {
@@ -240,6 +237,11 @@ class Player {
                 const endX = this.x + Math.cos(angle) * dist;
                 const endY = this.y + Math.sin(angle) * dist;
 
+                // 점멸 시작 시 이펙트
+                for (let k = 0; k < 15; k++) {
+                    particles.push(new Particle(startX, startY, Math.random() * 4 + 2, '#00FFFF', { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 }));
+                }
+
                 const blinkDamage = 50;
                 const blinkWidth = this.width * 1.5;
 
@@ -255,8 +257,9 @@ class Player {
 
                     if (distSq < (enemy.radius + blinkWidth / 2) ** 2) {
                         enemy.health -= blinkDamage;
-                        for (let k = 0; k < 5; k++) {
-                            particles.push(new Particle(enemy.x, enemy.y, Math.random() * 3, '#00FFFF', { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 }));
+                        // 적 피해 시 이펙트
+                        for (let k = 0; k < 10; k++) {
+                            particles.push(new Particle(enemy.x, enemy.y, Math.random() * 5 + 2, '#FF00FF', { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 }));
                         }
                     }
                 }
@@ -270,6 +273,11 @@ class Player {
 
                 this.x = endX;
                 this.y = endY;
+
+                // 점멸 종료 시 이펙트
+                for (let k = 0; k < 15; k++) {
+                    particles.push(new Particle(endX, endY, Math.random() * 4 + 2, '#00FFFF', { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 }));
+                }
                 break;
             case 'barrier':
                 this.activeEffects['barrier'] = true; this.skillDurations['barrier'] = 180;
@@ -468,7 +476,7 @@ class SummonerEnemy extends Enemy {
 }
 
 class LaserEnemy extends Enemy {
-    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1.2, 333, 50, 15); this.state = 'moving'; this.aimDuration = 45; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; } // Speed reduced
+    constructor(x, y) { super(x, y, 22, '#FFFFFF', 1.2, 250, 50, 25); this.state = 'moving'; this.aimDuration = 30; this.fireDuration = 1; this.aimTimer = 0; this.laserTarget = {}; this.consecutiveShots = 0; this.maxConsecutiveShots = 1; this.attackCooldown = 40; } // Speed reduced
     draw() { ctx.save(); ctx.translate(this.x, this.y); const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x); ctx.rotate(angle); ctx.fillStyle = this.color; ctx.shadowColor = this.color; ctx.shadowBlur = 15; ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.closePath(); ctx.fill(); ctx.restore(); }
     update() {
         if (this.attackTimer > 0) this.attackTimer--;
@@ -523,7 +531,7 @@ class LaserEnemy extends Enemy {
                 projectiles.push(laserProjectile);
 
                 this.state = 'moving';
-                this.attackTimer = this.attackCooldown * 3; // Cooldown adjusted
+                this.attackTimer = this.attackCooldown * 2; // Cooldown adjusted
             }
         }
         this.draw();
@@ -729,7 +737,16 @@ class BoomerangProjectile extends Projectile {
             if (player.invincibleTimer <= 0) {
                 player.health -= this.damage;
                 player.health = Math.max(0, player.health);
-                this.hitTargets.add(player);
+                player.invincibleTimer = 30; // Add brief invincibility
+                this.hitTargets.add(player); // Still add to prevent immediate re-hit in the same frame
+                
+                // Remove projectile and reset owner's cooldown
+                const index = projectiles.findIndex(p => p === this);
+                if (index > -1) projectiles.splice(index, 1);
+                if (this.owner instanceof BoomerangEnemy) {
+                    this.owner.throwTimer = 0;
+                }
+                return; // Stop further updates for this projectile
             }
         }
         this.draw();
@@ -790,12 +807,8 @@ const waveConfig = [
     { triangle: 5, square: 0, tree: 0 }, // Wave 1
     { triangle: 8, square: 2, tree: 0 }, // Wave 2
     { triangle: 2, square: 2, tree: 2, boomerang: 1, tinyTriangle: 3, blinking: 2 }, // Wave 3
-    { laser: 5, blinking: 2, square: 2, healer: 3 }, // Wave 4
-    { triangle: 10, square: 8, tree: 3, healer: 1, summoner: 1, boomerang: 2 }, // Wave 5
-    { triangle: 12, square: 5, tree: 4, summoner: 1, healer: 1, laser: 1, blinking: 3 }, // Wave 6
-    { triangle: 8, square: 8, tree: 3, laser: 3, hexagon: 1, healer: 1, boomerang: 3 }, // Wave 7
-    { triangle: 10, healer: 2, summoner: 2, laser: 3, hexagon: 1, blinking: 4 }, // Wave 8
-    { triangle: 15, square: 10, tree: 5, healer: 3, summoner: 3, laser: 4, hexagon: 2, boomerang: 4, blinking: 4 } // Wave 9
+    { laser: 3, blinking: 2, square: 2, healer: 2 }, // Wave 4
+    { triangle: 7, square: 5, tree: 3, healer: 1, summoner: 2, boomerang: 2 } // Wave 5
 ];
 
 function startWave() {
@@ -810,7 +823,24 @@ function startWave() {
         bossHealthBar.classList.add('hidden');
     }
 
-    const currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1), boomerang: Math.max(0, Math.floor(wave/4)-1), blinking: Math.max(0, Math.floor(wave/5)-1) };
+    let currentWave;
+    if (wave <= 5) { // Wave 5까지는 기존 waveConfig 사용
+        currentWave = waveConfig[wave - 1] || { triangle: 10 + Math.floor(wave * 1.5), square: 5 + wave, tree: 2 + Math.floor(wave / 2), healer: Math.max(0, Math.floor(wave / 2) - 1), summoner: Math.max(0, Math.floor(wave / 3) - 1), laser: Math.max(0, Math.floor(wave / 4) - 1), hexagon: Math.max(0, Math.floor(wave / 5) - 1), boomerang: Math.max(0, Math.floor(wave/4)-1), blinking: Math.max(0, Math.floor(wave/5)-1) };
+    } else { // Wave 6부터는 익스트림 웨이브
+        showWaveAnnouncer('EXTREME WAVE');
+        // 모든 적 유형을 포함하는 객체 생성 (각 적의 수는 웨이브에 따라 증가)
+        currentWave = {
+            triangle: 10 + Math.floor(wave * 2),
+            square: 5 + Math.floor(wave * 1.5),
+            tree: 3 + Math.floor(wave * 1),
+            healer: 1 + Math.floor(wave / 3),
+            summoner: 1 + Math.floor(wave / 3),
+            laser: 1 + Math.floor(wave / 2),
+            hexagon: 1 + Math.floor(wave / 4),
+            boomerang: 1 + Math.floor(wave / 2),
+            blinking: 1 + Math.floor(wave / 3)
+        };
+    }
     enemiesToSpawn = [];
     for (let i = 0; i < (currentWave.triangle || 0); i++) enemiesToSpawn.push('triangle');
     for (let i = 0; i < (currentWave.square || 0); i++) enemiesToSpawn.push('square');
@@ -830,25 +860,31 @@ function startWave() {
 
 const shopUpgradePool = [
     // Tower Upgrades
-    { id: 'towerHealth', name: '타워 체력 +250', description: '타워의 최대 체력과 현재 체력을 250 늘립니다.', type: 'tower', cost: 100, costIncrease: 100, apply: () => { tower.maxHealth = Math.min(700, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); } },
-    { id: 'addSentry', name: '보초 추가', description: '타워를 방어하는 자동 포탑을 추가합니다.', type: 'tower', cost: 150, costIncrease: 75, apply: () => { const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); } },
+    { id: 'towerHealth', name: '타워 체력 +250', description: '타워의 최대 체력과 현재 체력을 250 늘립니다.', type: 'tower', weight: 0.3, apply: () => { tower.maxHealth = Math.min(700, tower.maxHealth + 250); tower.health = Math.min(tower.health + 250, tower.maxHealth); } },
+    { id: 'addSentry', name: '보초 추가', description: '타워를 방어하는 자동 포탑을 추가합니다.', type: 'tower', weight: 0.7, apply: () => { const angle = Math.random() * Math.PI * 2; const dist = tower.size / 2 + Math.random() * 30; sentries.push(new Sentry(tower.x + Math.cos(angle) * dist, tower.y + Math.sin(angle) * dist)); } },
     // Player Upgrades
-    { id: 'playerHealth', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', type: 'player', cost: 50, costIncrease: 0, apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
-    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', type: 'player', cost: 150, costIncrease: 50, maxStacks: 5, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
-    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', type: 'player', cost: 150, costIncrease: 50, maxStacks: 5, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
-    { id: 'damage', name: '데미지 증가', description: '공격력이 25% 증가합니다. (최대 2회)', type: 'player', cost: 250, costIncrease: 100, maxStacks: 2, apply: (p) => { p.damageMultiplier += 0.25; p.damageUpgradesCount++; } },
-    { id: 'multishot', name: '다중 발사', description: '기본 공격에 총알을 하나 추가합니다. (최대 3발)', type: 'player', cost: 300, costIncrease: 150, maxStacks: 2, apply: (p) => { p.multishotUpgradesCount++; } },
-    { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'player', cost: 400, costIncrease: 0, isAbility: true, apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
+    { id: 'playerHealth', name: '체력 50 회복', description: '즉시 플레이어의 체력을 50 회복합니다.', type: 'player', weight: 0.8, apply: (p) => { p.health = Math.min(p.maxHealth, p.health + 50); } },
+    { id: 'speed', name: '이동 속도 증가', description: '플레이어의 최대 이동 속도가 영구적으로 증가합니다.', type: 'player', maxStacks: 5, weight: 1.0, apply: (p) => { p.maxSpeed += 0.5; p.speedUpgradesCount++; } },
+    { id: 'firerate', name: '공격 속도 증가', description: '기본 공격의 발사 속도가 영구적으로 증가합니다.', type: 'player', maxStacks: 5, weight: 1.0, apply: (p) => { p.shootCooldown = Math.max(5, p.shootCooldown * 0.85); p.firerateUpgradesCount++; } },
+    { id: 'damage', name: '데미지 증가', description: '공격력이 25% 증가합니다. (최대 2회)', type: 'player', maxStacks: 2, weight: 1.0, apply: (p) => { p.damageMultiplier += 0.25; p.damageUpgradesCount++; } },
+    { id: 'multishot', name: '다중 발사', description: '기본 공격에 총알을 하나 추가합니다. (최대 3발)', type: 'player', maxStacks: 2, weight: 0.9, apply: (p) => { p.multishotUpgradesCount++; } },
+    { id: 'explosive', name: '폭발탄', description: '총알이 적에게 닿으면 폭발하여 주변에 피해를 줍니다.', type: 'player', isAbility: true, weight: 0.8, apply: (p) => { if (!p.abilities.includes('explosive')) p.abilities.push('explosive'); } },
+    { id: 'skillCooldownReduction', name: '스킬 쿨타임 감소', description: '모든 스킬의 쿨타임이 10% 감소합니다. (최대 3회)', type: 'player', maxStacks: 3, weight: 0.9, apply: (p) => {
+        for (const skillId in p.skillCooldowns) {
+            p.skillCooldowns[skillId] = Math.max(p.originalSkillCooldowns[skillId] * (1 - (p.skillCooldownReductionStacks + 1) * 0.1), 60); // 최소 쿨타임 60프레임 (1초)
+        }
+        p.skillCooldownReductionStacks = (p.skillCooldownReductionStacks || 0) + 1;
+    } },
     // Skills
-    { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
-    { id: 'blink', name: '점멸', description: '[우클릭] 또는 [Q,E,R] 키로 짧은 거리를 순간이동하며 경로의 적에게 피해를 줍니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
-    { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
-    { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'player', cost: 200, costIncrease: 0, isSkill: true, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
+    { id: 'nova', name: '전방위 사격', description: '[Q,E,R] 키로 주변의 모든 적에게 피해를 줍니다.', type: 'player', isSkill: true, weight: 1.0, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('nova')) { p.skills.push('nova'); p.skillTimers['nova'] = 0; } } },
+    { id: 'blink', name: '점멸', description: '[우클릭] 또는 [Q,E,R] 키로 짧은 거리를 순간이동하며 경로의 적에게 피해를 줍니다.', type: 'player', isSkill: true, weight: 1.0, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('blink')) { p.skills.push('blink'); p.skillTimers['blink'] = 0; } } },
+    { id: 'barrier', name: '에너지 방벽', description: '[Q,E,R] 키로 잠시동안 방어막을 생성합니다.', type: 'player', isSkill: true, weight: 1.0, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('barrier')) { p.skills.push('barrier'); p.skillTimers['barrier'] = 0; } } },
+    { id: 'overdrive', name: '포탑 과부하', description: '[Q,E,R] 키로 모든 포탑의 공격 속도를 잠시 증가시킵니다.', type: 'player', isSkill: true, weight: 0.7, apply: (p) => { if (p.skills.length < 3 && !p.skills.includes('overdrive')) { p.skills.push('overdrive'); p.skillTimers['overdrive'] = 0; } } },
 ];
 
 
 function generateShopOptions() {
-    const availableUpgrades = shopUpgradePool.filter(upg => {
+    let availableUpgrades = shopUpgradePool.filter(upg => {
         if (upg.id === 'addSentry' && sentries.length >= 3) return false;
         if (upg.id === 'towerHealth' && tower.maxHealth >= 700) return false;
         if (upg.isSkill && player.skills.length >= 3) return false;
@@ -860,11 +896,32 @@ function generateShopOptions() {
             if (upg.id === 'firerate' && player.firerateUpgradesCount >= upg.maxStacks) return false;
             if (upg.id === 'damage' && player.damageUpgradesCount >= upg.maxStacks) return false;
             if (upg.id === 'multishot' && player.multishotUpgradesCount >= upg.maxStacks) return false;
+            if (upg.id === 'skillCooldownReduction' && player.skillCooldownReductionStacks >= upg.maxStacks) return false; // 추가
         }
         return true;
     });
 
-    const chosenUpgrades = availableUpgrades.sort(() => 0.5 - Math.random()).slice(0, 3);
+    console.log("Available Upgrades:", availableUpgrades.map(upg => upg.id)); // 디버깅 코드 추가
+
+    const chosenUpgrades = [];
+    const getWeightedRandom = (upgrades) => {
+        const totalWeight = upgrades.reduce((sum, upg) => sum + (upg.weight || 1.0), 0);
+        let random = Math.random() * totalWeight;
+        for (const upg of upgrades) {
+            random -= (upg.weight || 1.0);
+            if (random < 0) {
+                return upg;
+            }
+        }
+        return upgrades[upgrades.length - 1]; // Fallback
+    };
+
+    while (chosenUpgrades.length < 3 && availableUpgrades.length > 0) {
+        const selected = getWeightedRandom(availableUpgrades);
+        chosenUpgrades.push(selected);
+        availableUpgrades = availableUpgrades.filter(upg => upg.id !== selected.id);
+    }
+
 
     for (let i = 0; i < 3; i++) {
         const optionEl = document.getElementById(`shop-option-${i}`);
@@ -875,11 +932,13 @@ function generateShopOptions() {
             const btnEl = optionEl.querySelector('.select-option-btn');
 
             titleEl.textContent = upgrade.name;
-            descEl.textContent = `${upgrade.description} (비용: ${shopCosts[upgrade.id]})`;
+            descEl.textContent = upgrade.description; // 비용 제거
 
             const newBtn = btnEl.cloneNode(true);
             btnEl.parentNode.replaceChild(newBtn, btnEl);
-            newBtn.onclick = () => purchaseShopOption(upgrade);
+            newBtn.textContent = "선택"; // 버튼 텍스트 변경
+            newBtn.disabled = false; // 버튼 활성화
+            newBtn.onclick = () => selectShopOption(upgrade, newBtn);
             optionEl.style.display = 'flex';
         } else {
             optionEl.style.display = 'none';
@@ -887,35 +946,28 @@ function generateShopOptions() {
     }
 }
 
-function purchaseShopOption(upgrade) {
-    const cost = shopCosts[upgrade.id];
-    if (score >= cost) {
-        score -= cost;
-        upgrade.apply(player);
-        if (upgrade.costIncrease) {
-            shopCosts[upgrade.id] += upgrade.costIncrease;
-        }
+function selectShopOption(upgrade, button) {
+    upgrade.apply(player);
+    button.disabled = true;
+    button.textContent = "선택됨";
+    selectedUpgradesCount++;
+
+    if (selectedUpgradesCount >= 2) {
         shopModal.classList.add('hidden');
-    } else {
-        // Optional: Add feedback for not enough score
-        console.log("Not enough score!");
+        gameState = 'START'; // 다음 웨이브 시작
     }
 }
 
 // --- Game Flow & State Management ---
 function resetGame() {
     if (animationId) cancelAnimationFrame(animationId);
-    projectiles = []; enemies = []; particles = []; experienceOrbs = []; sentries = [];
+    projectiles = []; enemies = []; particles = []; sentries = [];
     score = 0; wave = 0; gameTime = 0;
+    selectedUpgradesCount = 0;
     gameState = 'LOBBY';
     player = new Player(canvas.width / 2 + 100, canvas.height / 2, '#00BFFF', 3.0);
     tower = new Tower(canvas.width / 2, canvas.height / 2, 87, '#FF4500');
-    tower.health = 500; tower.maxHealth = 700;
-
-    // Initialize costs
-    shopUpgradePool.forEach(upg => {
-        shopCosts[upg.id] = upg.cost;
-    });
+    tower.health = 500; tower.maxHealth = 500;
 
     loadHighScore();
     Object.values(skillSlots).forEach(slot => { slot.style.borderColor = '#fff'; slot.style.boxShadow = '0 0 8px #fff'; slot.style.opacity = 0.4; slot.innerHTML = slot.id.slice(-1).toUpperCase(); });
@@ -1010,7 +1062,6 @@ function animate() {
     if (gameState !== 'GAME_OVER') player.update(); else player.draw();
     particles.forEach((p, i) => { if (p.alpha <= 0) particles.splice(i, 1); else p.update(); });
     projectiles.forEach((p, i) => { if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) projectiles.splice(i, 1); else p.update(); });
-    experienceOrbs.forEach((orb, i) => { orb.update(); const dist = Math.hypot(player.x - orb.x, player.y - orb.y); if (dist < player.width / 2 + orb.radius + 50) { score += orb.value; experienceOrbs.splice(i, 1); } });
 
     // Update and draw enemies
     if (gameState !== 'SHOP_PHASE') {
@@ -1118,8 +1169,10 @@ function animate() {
 
                         if (enemy.health <= 0) {
                             if (enemy instanceof SquareEnemy) { for (let k = 0; k < 2; k++) { enemies.push(new TinyTriangleEnemy(enemy.x + (Math.random() - 0.5) * 20, enemy.y + (Math.random() - 0.5) * 20)); } }
-                            const xpBonus = wave > 1 ? 5 : 0;
-                            experienceOrbs.push(new ExperienceOrb(enemy.x, enemy.y, 5, '#00FF00', Math.max(1, enemy.xpValue + xpBonus + (Math.random() * 20 - 10))));
+                            // 여기에 터지는 이펙트 추가
+                            for (let k = 0; k < 20; k++) { // 20개의 파티클 생성
+                                particles.push(new Particle(enemy.x, enemy.y, Math.random() * 3 + 1, enemy.color, { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 }));
+                            }
                             enemies.splice(i, 1);
                         }
                         if (projectiles[j] === undefined) break;
@@ -1151,7 +1204,14 @@ function animate() {
                 const distTower = Math.hypot(projectile.x - tower.x, projectile.y - tower.y);
                 if (distTower < projectile.radius + tower.size / 2) {
                     tower.health -= projectile.damage;
-                    if (!(projectile.pierceCount > 0) && !(projectile instanceof BoomerangProjectile)) {
+                    if (projectile instanceof BoomerangProjectile) {
+                        if (projectile.owner instanceof BoomerangEnemy) {
+                            projectile.owner.throwTimer = 0;
+                        }
+                        projectiles.splice(j, 1);
+                        continue;
+                    }
+                    if (!(projectile.pierceCount > 0)) {
                         projectiles.splice(j, 1);
                         continue;
                     }
@@ -1159,10 +1219,23 @@ function animate() {
             }
         }
     }
-    else if (gameState === 'WAVE_CLEAR') { waveClearTimer--; if (waveClearTimer <= 0) { gameState = 'SHOP_PHASE'; shopPhaseTimer = 300; shopAnnounced = false; } } else if (gameState === 'SHOP_PHASE') { if(!shopAnnounced) { showWaveAnnouncer('상점 시간 - 타워 우클릭'); shopAnnounced = true; } if (shopModal.classList.contains('hidden') && rouletteModal.classList.contains('hidden')) { shopPhaseTimer--; } shopTimerEl.textContent = Math.ceil(shopPhaseTimer / 60); if (shopPhaseTimer <= 0) { shopModal.classList.add('hidden'); rouletteModal.classList.add('hidden'); gameState = 'START'; } } else if (gameState === 'START') { startWave(); } 
+    else if (gameState === 'WAVE_CLEAR') {
+        gameState = 'SHOP_PHASE';
+        selectedUpgradesCount = 0; // Reset counter
+        generateShopOptions();
+        shopModal.classList.remove('hidden');
+        showWaveAnnouncer('상점 시간 - 2개의 능력을 선택하세요');
+    }     else if (gameState === 'SHOP_PHASE') {
+        // 2개를 선택하면 자동으로 닫히므로, 타이머 로직은 필요 없음
+        // 플레이어가 상점 모달을 닫을 경우를 대비한 로직은 유지할 수 있음
+        if (shopModal.classList.contains('hidden')) {
+            // 혹시 모를 경우를 대비해, 모달이 닫히면 다음 웨이브로 강제 진행
+            gameState = 'START';
+        }
+    } else if (gameState === 'START') { startWave(); } 
     if (tower.health <= 0 && gameState !== 'GAME_OVER') { gameState = 'GAME_OVER'; }
     if(gameState === 'GAME_OVER') { saveHighScore(); currentScoreEl.textContent = `WAVE ${wave} (시간: ${Math.floor(gameTime/60)}초)`; uiContainer.classList.add('hidden'); canvas.classList.add('hidden'); gameOverModal.classList.remove('hidden'); bgm.pause(); bgm.currentTime = 0; cancelAnimationFrame(animationId); return; }
-    playerHpEl.textContent = Math.max(0, player.health); towerHpEl.textContent = tower.health; xpEl.textContent = Math.floor(score);
+    playerHpEl.textContent = Math.max(0, player.health); towerHpEl.textContent = tower.health;
     enemyCountEl.textContent = enemies.length;
     const skillKeys = ['q', 'e', 'r']; const skillColors = { nova: '#FFD700', blink: '#00FFFF', barrier: '#FF00FF', overdrive: '#FFA500' };
     skillKeys.forEach((key, i) => { const skillId = player.skills[i]; if (skillId) { skillSlots[key].style.borderColor = skillColors[skillId]; skillSlots[key].style.opacity = 1 - (player.skillTimers[skillId] / player.skillCooldowns[skillId]); } else { skillSlots[key].style.borderColor = '#fff'; skillSlots[key].style.opacity = 0.4; } });
@@ -1192,13 +1265,6 @@ window.addEventListener('mousedown', e => {
 window.addEventListener('mouseup', e => { if (e.button === 0) keys.mouse0 = false; });
 window.addEventListener('contextmenu', e => { 
     e.preventDefault(); 
-    if (gameState === 'SHOP_PHASE') { 
-        const dist = Math.hypot(e.clientX - tower.x, e.clientY - tower.y); 
-        if (dist < tower.size) { 
-            generateShopOptions(); 
-            shopModal.classList.remove('hidden'); 
-        } 
-    } 
 });
 closeShopBtn.addEventListener('click', () => { shopModal.classList.add('hidden'); });
 
